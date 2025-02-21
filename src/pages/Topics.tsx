@@ -8,14 +8,66 @@ const specialties = [
     title: "Clínica Médica",
     topics: [
       {
-        id: 1,
+        id: "cardiologia",
         title: "Cardiologia",
-        description: "Sistema cardiovascular e suas patologias",
-        progress: 65,
-        questionsCount: 120,
-        timeSpent: "8h 30min",
+        subtopics: [
+          {
+            id: 1,
+            title: "Arritmias e Morte súbita",
+            description: "Distúrbios do ritmo cardíaco e suas consequências",
+            progress: 0,
+            questionsCount: 50,
+            timeSpent: "0h",
+          },
+          {
+            id: 2,
+            title: "IC e HAS",
+            description: "Insuficiência Cardíaca e Hipertensão Arterial Sistêmica",
+            progress: 0,
+            questionsCount: 60,
+            timeSpent: "0h",
+          },
+          {
+            id: 3,
+            title: "Valvopatias e Cardiomiopatias",
+            description: "Doenças das válvulas cardíacas e do músculo cardíaco",
+            progress: 0,
+            questionsCount: 45,
+            timeSpent: "0h",
+          },
+        ],
       },
-      // Outros temas de clínica médica
+      {
+        id: "endocrinologia",
+        title: "Endocrinologia",
+        subtopics: [
+          {
+            id: 4,
+            title: "Tireoide",
+            description: "Distúrbios da glândula tireoide",
+            progress: 0,
+            questionsCount: 40,
+            timeSpent: "0h",
+          },
+          {
+            id: 5,
+            title: "Suprarrenal e Paratireoide",
+            description: "Doenças das glândulas suprarrenais e paratireoides",
+            progress: 0,
+            questionsCount: 35,
+            timeSpent: "0h",
+          },
+          {
+            id: 6,
+            title: "DM e Obesidade",
+            description: "Diabetes Mellitus e controle do peso",
+            progress: 0,
+            questionsCount: 55,
+            timeSpent: "0h",
+          },
+        ],
+      },
+      // ... Outros temas de clínica médica
     ],
   },
   {
@@ -23,16 +75,168 @@ const specialties = [
     title: "Cirurgia",
     topics: [
       {
-        id: 2,
-        title: "Cirurgia Geral",
-        description: "Princípios básicos e técnicas cirúrgicas",
-        progress: 45,
-        questionsCount: 85,
-        timeSpent: "6h 15min",
+        id: 7,
+        title: "Trauma",
+        description: "Abordagem ao paciente politraumatizado",
+        progress: 0,
+        questionsCount: 45,
+        timeSpent: "0h",
+      },
+      {
+        id: 8,
+        title: "Perioperatório e outros",
+        description: "Cuidados pré e pós-operatórios",
+        progress: 0,
+        questionsCount: 40,
+        timeSpent: "0h",
+      },
+      {
+        id: 9,
+        title: "REMIT, queimaduras",
+        description: "Resposta Endócrino-Metabólica ao Trauma e queimados",
+        progress: 0,
+        questionsCount: 35,
+        timeSpent: "0h",
+      },
+      {
+        id: 10,
+        title: "Urologia",
+        description: "Patologias do sistema urinário",
+        progress: 0,
+        questionsCount: 30,
+        timeSpent: "0h",
+      },
+      {
+        id: 11,
+        title: "Cirurgia Vascular",
+        description: "Doenças vasculares cirúrgicas",
+        progress: 0,
+        questionsCount: 35,
+        timeSpent: "0h",
+      },
+      {
+        id: 12,
+        title: "Cirurgia do Aparelho Digestivo",
+        description: "Patologias cirúrgicas do sistema digestório",
+        progress: 0,
+        questionsCount: 50,
+        timeSpent: "0h",
       },
     ],
   },
-  // ... Adicione outras especialidades aqui
+  {
+    id: "gineco",
+    title: "Ginecologia e Obstetrícia",
+    topics: [
+      {
+        id: "ginecologia",
+        title: "Ginecologia",
+        subtopics: [
+          {
+            id: 13,
+            title: "Ciclo Menstrual",
+            description: "Fisiologia e distúrbios do ciclo menstrual",
+            progress: 0,
+            questionsCount: 30,
+            timeSpent: "0h",
+          },
+          {
+            id: 14,
+            title: "SUA e Infertilidade",
+            description: "Sangramento Uterino Anormal e causas de infertilidade",
+            progress: 0,
+            questionsCount: 35,
+            timeSpent: "0h",
+          },
+          // ... Outros temas de ginecologia
+        ],
+      },
+      {
+        id: "obstetricia",
+        title: "Obstetrícia",
+        subtopics: [
+          {
+            id: 15,
+            title: "Gestação",
+            description: "Fisiologia e patologias da gestação",
+            progress: 0,
+            questionsCount: 45,
+            timeSpent: "0h",
+          },
+          {
+            id: 16,
+            title: "O parto",
+            description: "Mecanismo e assistência ao parto",
+            progress: 0,
+            questionsCount: 40,
+            timeSpent: "0h",
+          },
+          // ... Outros temas de obstetrícia
+        ],
+      },
+    ],
+  },
+  {
+    id: "pediatria",
+    title: "Pediatria",
+    topics: [
+      {
+        id: 17,
+        title: "Neonatologia",
+        description: "Cuidados com o recém-nascido",
+        progress: 0,
+        questionsCount: 45,
+        timeSpent: "0h",
+      },
+      {
+        id: 18,
+        title: "Aleitamento materno + Crescimento e Desenvolvimento",
+        description: "Nutrição e desenvolvimento infantil",
+        progress: 0,
+        questionsCount: 40,
+        timeSpent: "0h",
+      },
+      // ... Outros temas de pediatria
+    ],
+  },
+  {
+    id: "preventiva",
+    title: "Medicina Preventiva",
+    topics: [
+      {
+        id: 19,
+        title: "Medidas de Saúde Coletiva",
+        description: "Ações de prevenção e promoção da saúde",
+        progress: 0,
+        questionsCount: 35,
+        timeSpent: "0h",
+      },
+      {
+        id: 20,
+        title: "Estudos Epidemiológicos",
+        description: "Metodologia e interpretação de estudos",
+        progress: 0,
+        questionsCount: 30,
+        timeSpent: "0h",
+      },
+      {
+        id: 21,
+        title: "Saúde do Trabalhador e Vigilância em Saúde",
+        description: "Medicina do trabalho e vigilância epidemiológica",
+        progress: 0,
+        questionsCount: 40,
+        timeSpent: "0h",
+      },
+      {
+        id: 22,
+        title: "SUS",
+        description: "Sistema Único de Saúde: princípios e diretrizes",
+        progress: 0,
+        questionsCount: 45,
+        timeSpent: "0h",
+      },
+    ],
+  },
 ];
 
 export default function Topics() {
