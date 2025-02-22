@@ -262,7 +262,18 @@ const specialties = [
 export default function Topics() {
   const [studiedTopics, setStudiedTopics] = useState<StudiedTopic[]>(() => {
     const saved = localStorage.getItem("studied-topics");
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    
+    try {
+      const parsed = JSON.parse(saved);
+      // Ensure each topic has a revisions array
+      return parsed.map((topic: any) => ({
+        ...topic,
+        revisions: topic.revisions || [],
+      }));
+    } catch (e) {
+      return [];
+    }
   });
 
   const [questionsInput, setQuestionsInput] = useState<{
@@ -492,7 +503,7 @@ export default function Topics() {
                           Estudado em: {formatDate(new Date(topic.studiedAt))}
                         </p>
                         <div className="mt-1 text-sm text-gray-500">
-                          {topic.revisions.map((revision, index) => (
+                          {(topic.revisions || []).map((revision, index) => (
                             <span key={index} className="mr-4">
                               D{REVISION_INTERVALS[index]}: {revision.questionsCount} questões
                             </span>
