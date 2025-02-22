@@ -1,12 +1,17 @@
 
 import { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, ChevronRight } from "lucide-react";
-import { addDays, format } from "date-fns";
+import { addDays, format, isAfter, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 
 // Intervalos de revisão em dias
 const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
+
+interface RevisionRecord {
+  date: Date;
+  questionsCount: number;
+}
 
 interface StudiedTopic {
   id: number | string;
@@ -14,6 +19,7 @@ interface StudiedTopic {
   studiedAt: Date;
   nextRevision: Date;
   currentInterval: number;
+  revisions: RevisionRecord[];
 }
 
 const specialties = [
@@ -259,6 +265,11 @@ export default function Topics() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [questionsInput, setQuestionsInput] = useState<{
+    topicId: number | string;
+    count: string;
+  } | null>(null);
+
   useEffect(() => {
     localStorage.setItem("studied-topics", JSON.stringify(studiedTopics));
   }, [studiedTopics]);
@@ -269,6 +280,7 @@ export default function Topics() {
 
     if (isAlreadyStudied) {
       setStudiedTopics(studiedTopics.filter((topic) => topic.id !== topicId));
+      setQuestionsInput(null);
       toast({
         title: "Tema desmarcado",
         description: "O tema foi removido da lista de revisões",
@@ -280,13 +292,55 @@ export default function Topics() {
         studiedAt: now,
         nextRevision: addDays(now, REVISION_INTERVALS[0]),
         currentInterval: 0,
+        revisions: [],
       };
       setStudiedTopics([...studiedTopics, newStudiedTopic]);
+      setQuestionsInput({ topicId, count: "" });
       toast({
         title: "Tema marcado como estudado",
-        description: "O tema foi adicionado à lista de revisões",
+        description: "Por favor, informe quantas questões você fez hoje",
       });
     }
+  };
+
+  const handleQuestionsSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!questionsInput) return;
+
+    const { topicId, count } = questionsInput;
+    const questionsCount = parseInt(count);
+
+    setStudiedTopics((prevTopics) =>
+      prevTopics.map((topic) => {
+        if (topic.id === topicId) {
+          const now = new Date();
+          const newRevision: RevisionRecord = {
+            date: now,
+            questionsCount,
+          };
+
+          // Avança para o próximo intervalo se houver
+          const currentInterval = topic.currentInterval;
+          const nextInterval = currentInterval + 1;
+          
+          return {
+            ...topic,
+            revisions: [...topic.revisions, newRevision],
+            currentInterval: nextInterval,
+            nextRevision: nextInterval < REVISION_INTERVALS.length 
+              ? addDays(now, REVISION_INTERVALS[nextInterval])
+              : topic.nextRevision,
+          };
+        }
+        return topic;
+      })
+    );
+
+    setQuestionsInput(null);
+    toast({
+      title: "Questões registradas",
+      description: "Seu progresso foi salvo com sucesso",
+    });
   };
 
   const isTopicStudied = (topicId: number | string) => {
@@ -297,34 +351,73 @@ export default function Topics() {
     return format(new Date(date), "dd 'de' MMMM", { locale: ptBR });
   };
 
+  const shouldShowQuestionsInput = (topic: StudiedTopic) => {
+    const today = new Date();
+    const nextRevisionDate = new Date(topic.nextRevision);
+    return (
+      topic.revisions.length < REVISION_INTERVALS.length &&
+      (isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate))
+    );
+  };
+
   const renderTopicButton = (topic: any) => {
     const studied = isTopicStudied(topic.id);
+    const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
 
     return (
-      <button
-        key={topic.id}
-        onClick={() => handleMarkAsStudied(topic.id, topic.title)}
-        className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
-      >
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900">{topic.title}</p>
-            {studied && (
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            )}
+      <div key={topic.id} className="border-b last:border-b-0">
+        <button
+          onClick={() => handleMarkAsStudied(topic.id, topic.title)}
+          className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-gray-900">{topic.title}</p>
+              {studied && <CheckCircle className="h-4 w-4 text-green-500" />}
+            </div>
+            <p className="text-sm text-gray-600">{topic.description}</p>
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span>{topic.questionsCount} questões</span>
+              {studied && (
+                <span className="text-green-600">
+                  Próxima revisão: {formatDate(studiedTopic?.nextRevision || new Date())}
+                </span>
+              )}
+            </div>
           </div>
-          <p className="text-sm text-gray-600">{topic.description}</p>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span>{topic.questionsCount} questões</span>
-            {studied && (
-              <span className="text-green-600">
-                Próxima revisão: {formatDate(studiedTopics.find(t => t.id === topic.id)?.nextRevision || new Date())}
-              </span>
-            )}
+          <ChevronRight className="h-5 w-5 text-gray-400" />
+        </button>
+
+        {studiedTopic && shouldShowQuestionsInput(studiedTopic) && (
+          <div className="border-t bg-gray-50 px-6 py-4">
+            <form onSubmit={handleQuestionsSubmit} className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700">
+                Quantas questões você fez{" "}
+                {studiedTopic.revisions.length === 0
+                  ? "hoje"
+                  : `na revisão ${studiedTopic.revisions.length}`}
+                ?
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={questionsInput?.topicId === topic.id ? questionsInput.count : ""}
+                onChange={(e) =>
+                  setQuestionsInput({ topicId: topic.id, count: e.target.value })
+                }
+                className="w-24 rounded-md border border-gray-300 px-3 py-1 text-sm"
+                placeholder="Nº questões"
+              />
+              <button
+                type="submit"
+                className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
+              >
+                Salvar
+              </button>
+            </form>
           </div>
-        </div>
-        <ChevronRight className="h-5 w-5 text-gray-400" />
-      </button>
+        )}
+      </div>
     );
   };
 
@@ -396,6 +489,13 @@ export default function Topics() {
                         <p className="text-sm text-gray-600">
                           Estudado em: {formatDate(new Date(topic.studiedAt))}
                         </p>
+                        <div className="mt-1 text-sm text-gray-500">
+                          {topic.revisions.map((revision, index) => (
+                            <span key={index} className="mr-4">
+                              D{REVISION_INTERVALS[index]}: {revision.questionsCount} questões
+                            </span>
+                          ))}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
