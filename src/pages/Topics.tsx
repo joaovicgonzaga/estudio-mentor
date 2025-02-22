@@ -1,6 +1,5 @@
 
-import { BookOpen } from "lucide-react";
-import { ThemeCard } from "@/components/ThemeCard";
+import { BookOpen, ChevronRight } from "lucide-react";
 
 const specialties = [
   {
@@ -253,16 +252,93 @@ export default function Topics() {
           </p>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-6">
           {specialties.map((specialty) => (
-            <div key={specialty.id} className="rounded-lg border bg-white p-6">
-              <h2 className="mb-6 text-xl font-semibold text-gray-900">
-                {specialty.title}
-              </h2>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {specialty.topics.map((topic) => (
-                  <ThemeCard key={topic.id} {...topic} />
-                ))}
+            <div key={specialty.id} className="rounded-lg border bg-white">
+              <div className="border-b p-6">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {specialty.title}
+                </h2>
+              </div>
+              <div className="divide-y">
+                {specialty.topics.map((topic) => {
+                  if ('subtopics' in topic) {
+                    return (
+                      <div key={topic.id} className="divide-y">
+                        <div className="bg-gray-50 px-6 py-4">
+                          <h3 className="font-medium text-gray-900">
+                            {topic.title}
+                          </h3>
+                        </div>
+                        {topic.subtopics.map((subtopic) => (
+                          <button
+                            key={subtopic.id}
+                            className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
+                          >
+                            <div className="space-y-1">
+                              <p className="font-medium text-gray-900">
+                                {subtopic.title}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {subtopic.description}
+                              </p>
+                              <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <span>{subtopic.questionsCount} questões</span>
+                                <span>{subtopic.timeSpent} de estudo</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-16 overflow-hidden rounded-full bg-gray-200">
+                                  <div
+                                    className="h-full rounded-full bg-primary transition-all"
+                                    style={{ width: `${subtopic.progress}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm text-gray-600">
+                                  {subtopic.progress}%
+                                </span>
+                              </div>
+                              <ChevronRight className="h-5 w-5 text-gray-400" />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={topic.id}
+                      className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
+                    >
+                      <div className="space-y-1">
+                        <p className="font-medium text-gray-900">{topic.title}</p>
+                        <p className="text-sm text-gray-600">
+                          {topic.description}
+                        </p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span>{topic.questionsCount} questões</span>
+                          <span>{topic.timeSpent} de estudo</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-16 overflow-hidden rounded-full bg-gray-200">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${topic.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {topic.progress}%
+                          </span>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-gray-400" />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
