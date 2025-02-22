@@ -11,7 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Brain, Timer, Target } from "lucide-react";
+import { Brain, Target, CheckCircle } from "lucide-react";
 
 const performanceData = [
   { subject: "Cardiologia", você: 75, média: 65 },
@@ -33,7 +33,7 @@ const themes = [
     description: "Doenças cardiovasculares, ECG e tratamentos",
     progress: 65,
     questionsCount: 120,
-    timeSpent: "8h 30min",
+    correctAnswers: 78,
   },
   {
     id: 2,
@@ -41,7 +41,7 @@ const themes = [
     description: "Sistema nervoso, patologias e diagnósticos",
     progress: 45,
     questionsCount: 85,
-    timeSpent: "6h 15min",
+    correctAnswers: 38,
   },
   {
     id: 3,
@@ -49,7 +49,7 @@ const themes = [
     description: "Desenvolvimento infantil e doenças pediátricas",
     progress: 30,
     questionsCount: 150,
-    timeSpent: "4h 45min",
+    correctAnswers: 45,
   },
   {
     id: 4,
@@ -57,7 +57,7 @@ const themes = [
     description: "Técnicas cirúrgicas e cuidados pré/pós-operatórios",
     progress: 25,
     questionsCount: 95,
-    timeSpent: "3h 20min",
+    correctAnswers: 24,
   },
 ];
 
@@ -66,14 +66,16 @@ const ThemeCard = ({
   description,
   progress,
   questionsCount,
-  timeSpent,
+  correctAnswers,
 }: {
   title: string;
   description: string;
   progress: number;
   questionsCount: number;
-  timeSpent: string;
+  correctAnswers: number;
 }) => {
+  const accuracy = Math.round((correctAnswers / questionsCount) * 100) || 0;
+  
   return (
     <div className="group relative rounded-lg border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
       <div className="space-y-4">
@@ -83,7 +85,7 @@ const ThemeCard = ({
         </div>
         <div className="flex items-center justify-between text-sm text-gray-600">
           <span>{questionsCount} questões</span>
-          <span>{timeSpent} de estudo</span>
+          <span>{accuracy}% de acerto</span>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -138,11 +140,11 @@ const Index = () => {
             trend={{ value: 4, isPositive: true }}
           />
           <StatCard
-            title="Horas Estudadas"
-            value="42h"
-            description="Essa semana"
-            icon={Timer}
-            trend={{ value: 2, isPositive: false }}
+            title="Sequência de Acertos"
+            value="14"
+            description="Melhor sequência: 23"
+            icon={CheckCircle}
+            trend={{ value: 2, isPositive: true }}
           />
         </div>
 
@@ -196,7 +198,7 @@ const Index = () => {
                     description={theme.description}
                     progress={theme.progress}
                     questionsCount={theme.questionsCount}
-                    timeSpent={theme.timeSpent}
+                    correctAnswers={theme.correctAnswers}
                   />
                 ))}
               </div>
@@ -222,7 +224,7 @@ const Index = () => {
                 description={theme.description}
                 progress={theme.progress}
                 questionsCount={theme.questionsCount}
-                timeSpent={theme.timeSpent}
+                correctAnswers={theme.correctAnswers}
               />
             ))}
           </div>
