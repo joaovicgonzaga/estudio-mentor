@@ -1,6 +1,5 @@
 
 import { useEffect } from "react";
-import { ThemeCard } from "@/components/ThemeCard";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
 import {
@@ -12,15 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import {
-  Brain,
-  GraduationCap,
-  Timer,
-  Trophy,
-  CheckCircle,
-  Target,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Brain, Timer, Target } from "lucide-react";
 
 const performanceData = [
   { subject: "Cardiologia", você: 75, média: 65 },
@@ -70,6 +61,47 @@ const themes = [
   },
 ];
 
+const ThemeCard = ({
+  title,
+  description,
+  progress,
+  questionsCount,
+  timeSpent,
+}: {
+  title: string;
+  description: string;
+  progress: number;
+  questionsCount: number;
+  timeSpent: string;
+}) => {
+  return (
+    <div className="group relative rounded-lg border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <p className="mt-1 text-sm text-gray-600">{description}</p>
+        </div>
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <span>{questionsCount} questões</span>
+          <span>{timeSpent} de estudo</span>
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-900">Progresso</span>
+            <span className="text-sm font-medium text-primary">{progress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Index = () => {
   useEffect(() => {
     console.log("Página de temas carregada");
@@ -90,7 +122,6 @@ const Index = () => {
           </p>
         </div>
 
-        {/* Stats Grid */}
         <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Total de Questões"
@@ -115,7 +146,6 @@ const Index = () => {
           />
         </div>
 
-        {/* Performance Chart */}
         <div className="mb-8 rounded-lg border bg-white p-6">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
@@ -139,7 +169,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Reviews and Progress */}
         <div className="mb-8 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <div className="rounded-lg border bg-white p-6">
@@ -175,7 +204,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* All Themes */}
         <div>
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
