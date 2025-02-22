@@ -1,5 +1,20 @@
 
-import { BookOpen, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BookOpen, CheckCircle, ChevronRight } from "lucide-react";
+import { addDays, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toast } from "@/hooks/use-toast";
+
+// Intervalos de revisão em dias
+const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
+
+interface StudiedTopic {
+  id: number | string;
+  title: string;
+  studiedAt: Date;
+  nextRevision: Date;
+  currentInterval: number;
+}
 
 const specialties = [
   {
@@ -239,6 +254,80 @@ const specialties = [
 ];
 
 export default function Topics() {
+  const [studiedTopics, setStudiedTopics] = useState<StudiedTopic[]>(() => {
+    const saved = localStorage.getItem("studied-topics");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("studied-topics", JSON.stringify(studiedTopics));
+  }, [studiedTopics]);
+
+  const handleMarkAsStudied = (topicId: number | string, topicTitle: string) => {
+    const now = new Date();
+    const isAlreadyStudied = studiedTopics.some((topic) => topic.id === topicId);
+
+    if (isAlreadyStudied) {
+      setStudiedTopics(studiedTopics.filter((topic) => topic.id !== topicId));
+      toast({
+        title: "Tema desmarcado",
+        description: "O tema foi removido da lista de revisões",
+      });
+    } else {
+      const newStudiedTopic: StudiedTopic = {
+        id: topicId,
+        title: topicTitle,
+        studiedAt: now,
+        nextRevision: addDays(now, REVISION_INTERVALS[0]),
+        currentInterval: 0,
+      };
+      setStudiedTopics([...studiedTopics, newStudiedTopic]);
+      toast({
+        title: "Tema marcado como estudado",
+        description: "O tema foi adicionado à lista de revisões",
+      });
+    }
+  };
+
+  const isTopicStudied = (topicId: number | string) => {
+    return studiedTopics.some((topic) => topic.id === topicId);
+  };
+
+  const formatDate = (date: Date) => {
+    return format(new Date(date), "dd 'de' MMMM", { locale: ptBR });
+  };
+
+  const renderTopicButton = (topic: any) => {
+    const studied = isTopicStudied(topic.id);
+
+    return (
+      <button
+        key={topic.id}
+        onClick={() => handleMarkAsStudied(topic.id, topic.title)}
+        className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
+      >
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-gray-900">{topic.title}</p>
+            {studied && (
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            )}
+          </div>
+          <p className="text-sm text-gray-600">{topic.description}</p>
+          <div className="flex items-center gap-4 text-sm text-gray-500">
+            <span>{topic.questionsCount} questões</span>
+            {studied && (
+              <span className="text-green-600">
+                Próxima revisão: {formatDate(studiedTopics.find(t => t.id === topic.id)?.nextRevision || new Date())}
+              </span>
+            )}
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 text-gray-400" />
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
       <div className="mx-auto max-w-7xl">
@@ -270,79 +359,58 @@ export default function Topics() {
                             {topic.title}
                           </h3>
                         </div>
-                        {topic.subtopics.map((subtopic) => (
-                          <button
-                            key={subtopic.id}
-                            className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
-                          >
-                            <div className="space-y-1">
-                              <p className="font-medium text-gray-900">
-                                {subtopic.title}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {subtopic.description}
-                              </p>
-                              <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <span>{subtopic.questionsCount} questões</span>
-                                <span>{subtopic.timeSpent} de estudo</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <div className="h-2 w-16 overflow-hidden rounded-full bg-gray-200">
-                                  <div
-                                    className="h-full rounded-full bg-primary transition-all"
-                                    style={{ width: `${subtopic.progress}%` }}
-                                  />
-                                </div>
-                                <span className="text-sm text-gray-600">
-                                  {subtopic.progress}%
-                                </span>
-                              </div>
-                              <ChevronRight className="h-5 w-5 text-gray-400" />
-                            </div>
-                          </button>
-                        ))}
+                        {topic.subtopics.map((subtopic) => renderTopicButton(subtopic))}
                       </div>
                     );
                   }
-
-                  return (
-                    <button
-                      key={topic.id}
-                      className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
-                    >
-                      <div className="space-y-1">
-                        <p className="font-medium text-gray-900">{topic.title}</p>
-                        <p className="text-sm text-gray-600">
-                          {topic.description}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span>{topic.questionsCount} questões</span>
-                          <span>{topic.timeSpent} de estudo</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-16 overflow-hidden rounded-full bg-gray-200">
-                            <div
-                              className="h-full rounded-full bg-primary transition-all"
-                              style={{ width: `${topic.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-600">
-                            {topic.progress}%
-                          </span>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-gray-400" />
-                      </div>
-                    </button>
-                  );
+                  return renderTopicButton(topic);
                 })}
               </div>
             </div>
           ))}
         </div>
+
+        {studiedTopics.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Próximas Revisões
+              </h2>
+              <p className="text-sm text-gray-600">
+                Temas que você precisa revisar em ordem cronológica
+              </p>
+            </div>
+            <div className="rounded-lg border bg-white">
+              <div className="divide-y">
+                {studiedTopics
+                  .sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime())
+                  .map((topic) => (
+                    <div
+                      key={topic.id}
+                      className="flex items-center justify-between px-6 py-4"
+                    >
+                      <div>
+                        <h3 className="font-medium text-gray-900">
+                          {topic.title}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Estudado em: {formatDate(new Date(topic.studiedAt))}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">
+                          Próxima revisão
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {formatDate(new Date(topic.nextRevision))}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
