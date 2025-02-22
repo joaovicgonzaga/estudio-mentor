@@ -352,6 +352,8 @@ export default function Topics() {
   };
 
   const shouldShowQuestionsInput = (topic: StudiedTopic) => {
+    if (!topic || !topic.revisions) return false;
+    
     const today = new Date();
     const nextRevisionDate = new Date(topic.nextRevision);
     return (
@@ -378,9 +380,9 @@ export default function Topics() {
             <p className="text-sm text-gray-600">{topic.description}</p>
             <div className="flex items-center gap-4 text-sm text-gray-500">
               <span>{topic.questionsCount} questões</span>
-              {studied && (
+              {studied && studiedTopic && (
                 <span className="text-green-600">
-                  Próxima revisão: {formatDate(studiedTopic?.nextRevision || new Date())}
+                  Próxima revisão: {formatDate(studiedTopic.nextRevision)}
                 </span>
               )}
             </div>
