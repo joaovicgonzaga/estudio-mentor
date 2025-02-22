@@ -266,7 +266,6 @@ export default function Topics() {
     
     try {
       const parsed = JSON.parse(saved);
-      // Ensure each topic has a revisions array
       return parsed.map((topic: any) => ({
         ...topic,
         revisions: topic.revisions || [],
@@ -330,7 +329,6 @@ export default function Topics() {
             questionsCount,
           };
 
-          // Avança para o próximo intervalo se houver
           const currentInterval = topic.currentInterval;
           const nextInterval = currentInterval + 1;
           
@@ -362,74 +360,80 @@ export default function Topics() {
     return format(new Date(date), "dd 'de' MMMM", { locale: ptBR });
   };
 
-  const shouldShowQuestionsInput = (topic: StudiedTopic) => {
-    if (!topic || !topic.revisions) return false;
+  const shouldShowQuestionsInput = (topicId: number | string) => {
+    const studiedTopic = studiedTopics.find(topic => topic.id === topicId);
+    if (!studiedTopic || !studiedTopic.revisions) return false;
     
+    // Mostra o input se ainda não registrou questões para este tema
+    if (studiedTopic.revisions.length === 0) return true;
+
+    // Ou se está na data de revisão
     const today = new Date();
-    const nextRevisionDate = new Date(topic.nextRevision);
-    return (
-      topic.revisions.length < REVISION_INTERVALS.length &&
-      (isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate))
-    );
+    const nextRevisionDate = new Date(studiedTopic.nextRevision);
+    return studiedTopic.revisions.length < REVISION_INTERVALS.length &&
+      (isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate));
   };
 
   const renderTopicButton = (topic: any) => {
     const studied = isTopicStudied(topic.id);
     const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
+    const showQuestionsInput = shouldShowQuestionsInput(topic.id);
 
     return (
       <div key={topic.id} className="border-b last:border-b-0">
-        <button
-          onClick={() => handleMarkAsStudied(topic.id, topic.title)}
-          className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
-        >
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-gray-900">{topic.title}</p>
-              {studied && <CheckCircle className="h-4 w-4 text-green-500" />}
+        <div className="flex w-full flex-col">
+          <button
+            onClick={() => handleMarkAsStudied(topic.id, topic.title)}
+            className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
+          >
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-gray-900">{topic.title}</p>
+                {studied && <CheckCircle className="h-4 w-4 text-green-500" />}
+              </div>
+              <p className="text-sm text-gray-600">{topic.description}</p>
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span>{topic.questionsCount} questões</span>
+                {studied && studiedTopic && (
+                  <span className="text-green-600">
+                    Próxima revisão: {formatDate(studiedTopic.nextRevision)}
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="text-sm text-gray-600">{topic.description}</p>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>{topic.questionsCount} questões</span>
-              {studied && studiedTopic && (
-                <span className="text-green-600">
-                  Próxima revisão: {formatDate(studiedTopic.nextRevision)}
-                </span>
-              )}
-            </div>
-          </div>
-          <ChevronRight className="h-5 w-5 text-gray-400" />
-        </button>
+            <ChevronRight className="h-5 w-5 text-gray-400" />
+          </button>
 
-        {studiedTopic && shouldShowQuestionsInput(studiedTopic) && (
-          <div className="border-t bg-gray-50 px-6 py-4">
-            <form onSubmit={handleQuestionsSubmit} className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">
-                Quantas questões você fez{" "}
-                {studiedTopic.revisions.length === 0
-                  ? "hoje"
-                  : `na revisão ${studiedTopic.revisions.length}`}
-                ?
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={questionsInput?.topicId === topic.id ? questionsInput.count : ""}
-                onChange={(e) =>
-                  setQuestionsInput({ topicId: topic.id, count: e.target.value })
-                }
-                className="w-24 rounded-md border border-gray-300 px-3 py-1 text-sm"
-                placeholder="Nº questões"
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
-              >
-                Salvar
-              </button>
-            </form>
-          </div>
-        )}
+          {studied && showQuestionsInput && (
+            <div className="border-t bg-gray-50 px-6 py-4">
+              <form onSubmit={handleQuestionsSubmit} className="flex items-center gap-4">
+                <label className="text-sm font-medium text-gray-700">
+                  Quantas questões você fez{" "}
+                  {studiedTopic?.revisions.length === 0
+                    ? "hoje"
+                    : `na revisão ${studiedTopic?.revisions.length}`}
+                  ?
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={questionsInput?.topicId === topic.id ? questionsInput.count : ""}
+                  onChange={(e) =>
+                    setQuestionsInput({ topicId: topic.id, count: e.target.value })
+                  }
+                  className="w-24 rounded-md border border-gray-300 px-3 py-1 text-sm"
+                  placeholder="Nº questões"
+                />
+                <button
+                  type="submit"
+                  className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
+                >
+                  Salvar
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
