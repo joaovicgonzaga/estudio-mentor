@@ -458,6 +458,9 @@ export default function Topics() {
     const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
     const isExpanded = expandedTopics.has(topic.id);
 
+    const lastRevision = studiedTopic?.revisions?.[studiedTopic.revisions.length - 1];
+    const lastAccuracy = lastRevision?.accuracy;
+
     return (
       <div key={topic.id} className="border-b last:border-b-0">
         <div className="flex w-full flex-col">
@@ -470,9 +473,9 @@ export default function Topics() {
               <p className="text-sm text-gray-600">{topic.description}</p>
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <span>{topic.questionsCount} questões</span>
-                {studied && studiedTopic && studiedTopic.revisions.length > 0 && (
+                {studied && lastAccuracy !== undefined && (
                   <span className="text-green-600">
-                    Acertos: {studiedTopic.revisions[studiedTopic.revisions.length - 1].accuracy.toFixed(1)}%
+                    Acertos: {lastAccuracy.toFixed(1)}%
                   </span>
                 )}
               </div>
@@ -504,7 +507,7 @@ export default function Topics() {
                   <div className="space-y-3">
                     {studiedTopic && renderRevisionForm(topic, studiedTopic)}
                     
-                    {studiedTopic && studiedTopic.revisions.length > 0 && (
+                    {studiedTopic?.revisions?.length > 0 && (
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-gray-900">Histórico de revisões</h4>
                         <div className="space-y-1">
