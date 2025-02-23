@@ -4,7 +4,6 @@ import { addDays, format, isAfter, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 
-// Intervalos de revisão em dias
 const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
 
 interface RevisionRecord {
@@ -95,7 +94,6 @@ const specialties = [
           },
         ],
       },
-      // ... Outros temas de clínica médica
     ],
   },
   {
@@ -176,7 +174,6 @@ const specialties = [
             questionsCount: 35,
             timeSpent: "0h",
           },
-          // ... Outros temas de ginecologia
         ],
       },
       {
@@ -199,7 +196,6 @@ const specialties = [
             questionsCount: 40,
             timeSpent: "0h",
           },
-          // ... Outros temas de obstetrícia
         ],
       },
     ],
@@ -224,7 +220,6 @@ const specialties = [
         questionsCount: 40,
         timeSpent: "0h",
       },
-      // ... Outros temas de pediatria
     ],
   },
   {
@@ -289,6 +284,26 @@ export default function Topics() {
   useEffect(() => {
     localStorage.setItem("studied-topics", JSON.stringify(studiedTopics));
   }, [studiedTopics]);
+
+  const isTopicStudied = (topicId: number | string) => {
+    return studiedTopics.some((topic) => topic.id === topicId);
+  };
+
+  const toggleTopicExpansion = (topicId: number | string) => {
+    setExpandedTopics(prev => {
+      const next = new Set(prev);
+      if (next.has(topicId)) {
+        next.delete(topicId);
+      } else {
+        next.add(topicId);
+      }
+      return next;
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return format(new Date(date), "dd 'de' MMMM", { locale: ptBR });
+  };
 
   const handleMarkAsStudied = (topicId: number | string, topicTitle: string) => {
     const now = new Date();
@@ -592,11 +607,11 @@ export default function Topics() {
                           Estudado em: {formatDate(new Date(topic.studiedAt))}
                         </p>
                         <div className="mt-1 text-sm text-gray-500">
-                          {(topic.revisions || []).map((revision, index) => (
-                            <span key={index} className="mr-4">
-                              D{REVISION_INTERVALS[index]}: {revision.questionsCount} questões
+                          {topic.revisions.length > 0 && (
+                            <span>
+                              Última taxa de acerto: {topic.revisions[topic.revisions.length - 1].accuracy.toFixed(1)}%
                             </span>
-                          ))}
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
