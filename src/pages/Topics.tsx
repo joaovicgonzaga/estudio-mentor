@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { BookOpen, CheckCircle, ChevronRight } from "lucide-react";
+import { BookOpen, CheckCircle, ChevronRight, ChevronDown } from "lucide-react";
 import { addDays, format, isAfter, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
@@ -280,6 +279,8 @@ export default function Topics() {
     count: string;
   } | null>(null);
 
+  const [expandedTopics, setExpandedTopics] = useState<Set<number | string>>(new Set());
+
   useEffect(() => {
     localStorage.setItem("studied-topics", JSON.stringify(studiedTopics));
   }, [studiedTopics]);
@@ -400,18 +401,28 @@ export default function Topics() {
     );
   };
 
+  const toggleTopicExpansion = (topicId: number | string) => {
+    setExpandedTopics(prev => {
+      const next = new Set(prev);
+      if (next.has(topicId)) {
+        next.delete(topicId);
+      } else {
+        next.add(topicId);
+      }
+      return next;
+    });
+  };
+
   const renderTopicButton = (topic: any) => {
     const studied = isTopicStudied(topic.id);
     const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
     const showQuestionsInput = shouldShowQuestionsInput(topic.id);
+    const isExpanded = expandedTopics.has(topic.id);
 
     return (
       <div key={topic.id} className="border-b last:border-b-0">
         <div className="flex w-full flex-col">
-          <button
-            onClick={() => handleMarkAsStudied(topic.id, topic.title)}
-            className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
-          >
+          <div className="flex w-full items-center justify-between px-6 py-4 transition-colors hover:bg-gray-50">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <p className="font-medium text-gray-900">{topic.title}</p>
@@ -420,58 +431,104 @@ export default function Topics() {
               <p className="text-sm text-gray-600">{topic.description}</p>
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <span>{topic.questionsCount} questões</span>
-                {studied && studiedTopic && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600">
-                      {studiedTopic.revisions.length} revisões feitas
-                    </span>
-                    {studiedTopic.revisions.length > 0 && (
-                      <div className="flex -space-x-1">
-                        {studiedTopic.revisions.map((_, index) => (
-                          <div
-                            key={index}
-                            className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white ring-2 ring-white"
-                          >
-                            {index + 1}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+              </div>
+            </div>
+            <button
+              onClick={() => toggleTopicExpansion(topic.id)}
+              className="transform transition-transform duration-200"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-5 w-5 text-gray-400" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              )}
+            </button>
+          </div>
+
+          {isExpanded && (
+            <div className="border-t bg-gray-50 px-6 py-4">
+              <div className="space-y-4">
+                {!studied ? (
+                  <button
+                    onClick={() => handleMarkAsStudied(topic.id, topic.title)}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Marcar como estudado
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        {studiedTopic?.revisions.length || 0} revisões feitas
+                      </span>
+                      {studiedTopic && studiedTopic.revisions.length > 0 && (
+                        <div className="flex -space-x-1">
+                          {studiedTopic.revisions.map((_, index) => (
+                            <div
+                              key={index}
+                              className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white ring-2 ring-white"
+                            >
+                              {index + 1}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {studiedTopic && renderNextRevisionButton(studiedTopic)}
+                    <button
+                      onClick={() => handleMarkAsStudied(topic.id, topic.title)}
+                      className="text-sm text-red-600 hover:text-red-700"
+                    >
+                      Desmarcar tema
+                    </button>
+                  </div>
+                )}
+
+                {showQuestionsInput && (
+                  <div className="pt-3">
+                    <form onSubmit={handleQuestionsSubmit} className="flex items-center gap-4">
+                      <label className="text-sm font-medium text-gray-700">
+                        Quantas questões você fez{" "}
+                        {studiedTopic?.revisions.length === 0
+                          ? "hoje"
+                          : `na revisão ${studiedTopic?.revisions.length + 1}`}
+                        ?
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={questionsInput?.topicId === topic.id ? questionsInput.count : ""}
+                        onChange={(e) =>
+                          setQuestionsInput({ topicId: topic.id, count: e.target.value })
+                        }
+                        className="w-24 rounded-md border border-gray-300 px-3 py-1 text-sm"
+                        placeholder="Nº questões"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
+                      >
+                        Salvar
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {studiedTopic && studiedTopic.revisions.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-900">Histórico de revisões</h4>
+                    <div className="space-y-1">
+                      {studiedTopic.revisions.map((revision, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                          <span>Revisão {index + 1} (D{REVISION_INTERVALS[index]}):</span>
+                          <span>{revision.questionsCount} questões</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-              {studied && studiedTopic && renderNextRevisionButton(studiedTopic)}
-            </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
-          </button>
-
-          {studied && showQuestionsInput && (
-            <div className="border-t bg-gray-50 px-6 py-4">
-              <form onSubmit={handleQuestionsSubmit} className="flex items-center gap-4">
-                <label className="text-sm font-medium text-gray-700">
-                  Quantas questões você fez{" "}
-                  {studiedTopic?.revisions.length === 0
-                    ? "hoje"
-                    : `na revisão ${studiedTopic?.revisions.length + 1}`}
-                  ?
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={questionsInput?.topicId === topic.id ? questionsInput.count : ""}
-                  onChange={(e) =>
-                    setQuestionsInput({ topicId: topic.id, count: e.target.value })
-                  }
-                  className="w-24 rounded-md border border-gray-300 px-3 py-1 text-sm"
-                  placeholder="Nº questões"
-                />
-                <button
-                  type="submit"
-                  className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
-                >
-                  Salvar
-                </button>
-              </form>
             </div>
           )}
         </div>
