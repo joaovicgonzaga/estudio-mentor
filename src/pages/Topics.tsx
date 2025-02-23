@@ -9,7 +9,10 @@ const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
 
 interface RevisionRecord {
   date: Date;
-  questionsCount: number;
+  correctCount: number;
+  wrongCount: number;
+  totalCount: number;
+  accuracy: number;
 }
 
 interface StudiedTopic {
@@ -19,6 +22,12 @@ interface StudiedTopic {
   nextRevision: Date;
   currentInterval: number;
   revisions: RevisionRecord[];
+}
+
+interface RevisionInput {
+  topicId: number | string;
+  correct: string;
+  wrong: string;
 }
 
 const specialties = [
@@ -274,11 +283,7 @@ export default function Topics() {
     }
   });
 
-  const [questionsInput, setQuestionsInput] = useState<{
-    topicId: number | string;
-    count: string;
-  } | null>(null);
-
+  const [revisionInput, setRevisionInput] = useState<RevisionInput | null>(null);
   const [expandedTopics, setExpandedTopics] = useState<Set<number | string>>(new Set());
 
   useEffect(() => {
@@ -291,7 +296,7 @@ export default function Topics() {
 
     if (isAlreadyStudied) {
       setStudiedTopics(studiedTopics.filter((topic) => topic.id !== topicId));
-      setQuestionsInput(null);
+      setRevisionInput(null);
       toast({
         title: "Tema desmarcado",
         description: "O tema foi removido da lista de revisões",
@@ -306,20 +311,23 @@ export default function Topics() {
         revisions: [],
       };
       setStudiedTopics([...studiedTopics, newStudiedTopic]);
-      setQuestionsInput({ topicId, count: "" });
+      setRevisionInput({ topicId, correct: "", wrong: "" });
       toast({
         title: "Tema marcado como estudado",
-        description: "Por favor, informe quantas questões você fez hoje",
+        description: "Por favor, informe o número de acertos e erros",
       });
     }
   };
 
-  const handleQuestionsSubmit = (event: React.FormEvent) => {
+  const handleRevisionSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!questionsInput) return;
+    if (!revisionInput) return;
 
-    const { topicId, count } = questionsInput;
-    const questionsCount = parseInt(count);
+    const { topicId, correct, wrong } = revisionInput;
+    const correctCount = parseInt(correct);
+    const wrongCount = parseInt(wrong);
+    const totalCount = correctCount + wrongCount;
+    const accuracy = (correctCount / totalCount) * 100;
 
     setStudiedTopics((prevTopics) =>
       prevTopics.map((topic) => {
@@ -327,7 +335,10 @@ export default function Topics() {
           const now = new Date();
           const newRevision: RevisionRecord = {
             date: now,
-            questionsCount,
+            correctCount,
+            wrongCount,
+            totalCount,
+            accuracy,
           };
 
           const currentInterval = topic.currentInterval;
@@ -346,77 +357,90 @@ export default function Topics() {
       })
     );
 
-    setQuestionsInput(null);
+    setRevisionInput(null);
     toast({
-      title: "Questões registradas",
-      description: `Próxima revisão em ${REVISION_INTERVALS[studiedTopics.find(t => t.id === topicId)?.currentInterval || 0]} dias`,
+      title: "Revisão registrada",
+      description: `Taxa de acerto: ${accuracy.toFixed(1)}%. Próxima revisão em ${REVISION_INTERVALS[studiedTopics.find(t => t.id === topicId)?.currentInterval || 0]} dias`,
     });
   };
 
-  const isTopicStudied = (topicId: number | string) => {
-    return studiedTopics.some((topic) => topic.id === topicId);
-  };
-
-  const formatDate = (date: Date) => {
-    return format(new Date(date), "dd 'de' MMMM", { locale: ptBR });
-  };
-
-  const shouldShowQuestionsInput = (topicId: number | string) => {
+  const shouldShowRevisionInput = (topicId: number | string) => {
     const studiedTopic = studiedTopics.find(topic => topic.id === topicId);
-    if (!studiedTopic || !studiedTopic.revisions) return false;
+    if (!studiedTopic) return false;
     
-    // Mostra o input se ainda não registrou questões para este tema
     if (studiedTopic.revisions.length === 0) return true;
 
-    // Ou se está na data de revisão
     const today = new Date();
     const nextRevisionDate = new Date(studiedTopic.nextRevision);
     return studiedTopic.revisions.length < REVISION_INTERVALS.length &&
       (isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate));
   };
 
-  const renderNextRevisionButton = (topic: StudiedTopic) => {
-    if (topic.revisions.length >= REVISION_INTERVALS.length) return null;
+  const renderRevisionForm = (topic: any, studiedTopic: StudiedTopic | undefined) => {
+    if (!shouldShowRevisionInput(topic.id)) return null;
 
-    const today = new Date();
-    const nextRevisionDate = new Date(topic.nextRevision);
-    const isRevisionDay = isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate);
-
-    if (!isRevisionDay) {
-      return (
-        <div className="mt-2 text-sm text-gray-600">
-          Próxima revisão em: {formatDate(nextRevisionDate)}
-        </div>
-      );
-    }
+    const revisionNumber = studiedTopic?.revisions.length || 0;
 
     return (
-      <button
-        onClick={() => setQuestionsInput({ topicId: topic.id, count: "" })}
-        className="mt-2 inline-flex items-center gap-2 rounded-md bg-green-50 px-3 py-1 text-sm text-green-700 hover:bg-green-100"
-      >
-        <CheckCircle className="h-4 w-4" />
-        Fazer revisão {topic.revisions.length + 1}
-      </button>
+      <div className="pt-3">
+        <form onSubmit={handleRevisionSubmit} className="space-y-4">
+          <p className="text-sm font-medium text-gray-700">
+            {revisionNumber === 0 ? "Registre seus acertos e erros iniciais:" : `Registre os resultados da revisão ${revisionNumber + 1}:`}
+          </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Acertos
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={revisionInput?.topicId === topic.id ? revisionInput.correct : ""}
+                onChange={(e) =>
+                  setRevisionInput(prev => ({
+                    topicId: topic.id,
+                    correct: e.target.value,
+                    wrong: prev?.wrong || ""
+                  }))
+                }
+                className="ml-2 w-20 rounded-md border border-gray-300 px-3 py-1 text-sm"
+                placeholder="Acertos"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Erros
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={revisionInput?.topicId === topic.id ? revisionInput.wrong : ""}
+                onChange={(e) =>
+                  setRevisionInput(prev => ({
+                    topicId: topic.id,
+                    correct: prev?.correct || "",
+                    wrong: e.target.value
+                  }))
+                }
+                className="ml-2 w-20 rounded-md border border-gray-300 px-3 py-1 text-sm"
+                placeholder="Erros"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
+            >
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
     );
-  };
-
-  const toggleTopicExpansion = (topicId: number | string) => {
-    setExpandedTopics(prev => {
-      const next = new Set(prev);
-      if (next.has(topicId)) {
-        next.delete(topicId);
-      } else {
-        next.add(topicId);
-      }
-      return next;
-    });
   };
 
   const renderTopicButton = (topic: any) => {
     const studied = isTopicStudied(topic.id);
     const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
-    const showQuestionsInput = shouldShowQuestionsInput(topic.id);
     const isExpanded = expandedTopics.has(topic.id);
 
     return (
@@ -431,6 +455,11 @@ export default function Topics() {
               <p className="text-sm text-gray-600">{topic.description}</p>
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <span>{topic.questionsCount} questões</span>
+                {studied && studiedTopic && studiedTopic.revisions.length > 0 && (
+                  <span className="text-green-600">
+                    Acertos: {studiedTopic.revisions[studiedTopic.revisions.length - 1].accuracy.toFixed(1)}%
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -458,74 +487,32 @@ export default function Topics() {
                   </button>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-700">
-                        {studiedTopic?.revisions.length || 0} revisões feitas
-                      </span>
-                      {studiedTopic && studiedTopic.revisions.length > 0 && (
-                        <div className="flex -space-x-1">
-                          {studiedTopic.revisions.map((_, index) => (
-                            <div
-                              key={index}
-                              className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white ring-2 ring-white"
-                            >
-                              {index + 1}
+                    {studiedTopic && renderRevisionForm(topic, studiedTopic)}
+                    
+                    {studiedTopic && studiedTopic.revisions.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-gray-900">Histórico de revisões</h4>
+                        <div className="space-y-1">
+                          {studiedTopic.revisions.map((revision, index) => (
+                            <div key={index} className="flex items-center gap-4 text-sm text-gray-600">
+                              <span>Revisão {index + 1} (D{REVISION_INTERVALS[index]}):</span>
+                              <span>{revision.correctCount} acertos</span>
+                              <span>{revision.wrongCount} erros</span>
+                              <span className="font-medium text-green-600">
+                                {revision.accuracy.toFixed(1)}% de acerto
+                              </span>
                             </div>
                           ))}
                         </div>
-                      )}
-                    </div>
-                    {studiedTopic && renderNextRevisionButton(studiedTopic)}
+                      </div>
+                    )}
+
                     <button
                       onClick={() => handleMarkAsStudied(topic.id, topic.title)}
                       className="text-sm text-red-600 hover:text-red-700"
                     >
                       Desmarcar tema
                     </button>
-                  </div>
-                )}
-
-                {showQuestionsInput && (
-                  <div className="pt-3">
-                    <form onSubmit={handleQuestionsSubmit} className="flex items-center gap-4">
-                      <label className="text-sm font-medium text-gray-700">
-                        Quantas questões você fez{" "}
-                        {studiedTopic?.revisions.length === 0
-                          ? "hoje"
-                          : `na revisão ${studiedTopic?.revisions.length + 1}`}
-                        ?
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={questionsInput?.topicId === topic.id ? questionsInput.count : ""}
-                        onChange={(e) =>
-                          setQuestionsInput({ topicId: topic.id, count: e.target.value })
-                        }
-                        className="w-24 rounded-md border border-gray-300 px-3 py-1 text-sm"
-                        placeholder="Nº questões"
-                      />
-                      <button
-                        type="submit"
-                        className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
-                      >
-                        Salvar
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {studiedTopic && studiedTopic.revisions.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-gray-900">Histórico de revisões</h4>
-                    <div className="space-y-1">
-                      {studiedTopic.revisions.map((revision, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
-                          <span>Revisão {index + 1} (D{REVISION_INTERVALS[index]}):</span>
-                          <span>{revision.questionsCount} questões</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
