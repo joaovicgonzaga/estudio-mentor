@@ -16,6 +16,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<Index />} />
+    <Route path="/cronograma" element={<Schedule />} />
+    <Route path="/temas" element={<Topics />} />
+    <Route path="/metricas" element={<Metrics />} />
+    <Route path="/configuracao" element={<Settings />} />
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -25,14 +36,7 @@ const App = () => (
         <SidebarProvider>
           <Navigation />
           <main className="flex-1 p-6">
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/cronograma" element={<Schedule />} />
-              <Route path="/temas" element={<Topics />} />
-              <Route path="/metricas" element={<Metrics />} />
-              <Route path="/configuracao" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppRoutes />
           </main>
         </SidebarProvider>
       </BrowserRouter>
