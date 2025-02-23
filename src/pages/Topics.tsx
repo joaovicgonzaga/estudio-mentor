@@ -457,7 +457,6 @@ export default function Topics() {
     const studied = isTopicStudied(topic.id);
     const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
     const isExpanded = expandedTopics.has(topic.id);
-
     const lastRevision = studiedTopic?.revisions?.[studiedTopic.revisions.length - 1];
     const lastAccuracy = lastRevision?.accuracy;
 
@@ -511,16 +510,19 @@ export default function Topics() {
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-gray-900">Histórico de revisões</h4>
                         <div className="space-y-1">
-                          {studiedTopic.revisions.map((revision, index) => (
-                            <div key={index} className="flex items-center gap-4 text-sm text-gray-600">
-                              <span>Revisão {index + 1} (D{REVISION_INTERVALS[index]}):</span>
-                              <span>{revision.correctCount} acertos</span>
-                              <span>{revision.wrongCount} erros</span>
-                              <span className="font-medium text-green-600">
-                                {revision.accuracy.toFixed(1)}% de acerto
-                              </span>
-                            </div>
-                          ))}
+                          {studiedTopic.revisions.map((revision, index) => {
+                            if (!revision?.accuracy) return null;
+                            return (
+                              <div key={index} className="flex items-center gap-4 text-sm text-gray-600">
+                                <span>Revisão {index + 1} (D{REVISION_INTERVALS[index]}):</span>
+                                <span>{revision.correctCount} acertos</span>
+                                <span>{revision.wrongCount} erros</span>
+                                <span className="font-medium text-green-600">
+                                  {revision.accuracy.toFixed(1)}% de acerto
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
