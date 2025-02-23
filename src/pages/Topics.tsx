@@ -348,7 +348,7 @@ export default function Topics() {
     setQuestionsInput(null);
     toast({
       title: "Questões registradas",
-      description: "Seu progresso foi salvo com sucesso",
+      description: `Próxima revisão em ${REVISION_INTERVALS[studiedTopics.find(t => t.id === topicId)?.currentInterval || 0]} dias`,
     });
   };
 
@@ -374,6 +374,32 @@ export default function Topics() {
       (isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate));
   };
 
+  const renderNextRevisionButton = (topic: StudiedTopic) => {
+    if (topic.revisions.length >= REVISION_INTERVALS.length) return null;
+
+    const today = new Date();
+    const nextRevisionDate = new Date(topic.nextRevision);
+    const isRevisionDay = isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate);
+
+    if (!isRevisionDay) {
+      return (
+        <div className="mt-2 text-sm text-gray-600">
+          Próxima revisão em: {formatDate(nextRevisionDate)}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => setQuestionsInput({ topicId: topic.id, count: "" })}
+        className="mt-2 inline-flex items-center gap-2 rounded-md bg-green-50 px-3 py-1 text-sm text-green-700 hover:bg-green-100"
+      >
+        <CheckCircle className="h-4 w-4" />
+        Fazer revisão {topic.revisions.length + 1}
+      </button>
+    );
+  };
+
   const renderTopicButton = (topic: any) => {
     const studied = isTopicStudied(topic.id);
     const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
@@ -395,11 +421,26 @@ export default function Topics() {
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <span>{topic.questionsCount} questões</span>
                 {studied && studiedTopic && (
-                  <span className="text-green-600">
-                    Próxima revisão: {formatDate(studiedTopic.nextRevision)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">
+                      {studiedTopic.revisions.length} revisões feitas
+                    </span>
+                    {studiedTopic.revisions.length > 0 && (
+                      <div className="flex -space-x-1">
+                        {studiedTopic.revisions.map((_, index) => (
+                          <div
+                            key={index}
+                            className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white ring-2 ring-white"
+                          >
+                            {index + 1}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
+              {studied && studiedTopic && renderNextRevisionButton(studiedTopic)}
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />
           </button>
@@ -411,7 +452,7 @@ export default function Topics() {
                   Quantas questões você fez{" "}
                   {studiedTopic?.revisions.length === 0
                     ? "hoje"
-                    : `na revisão ${studiedTopic?.revisions.length}`}
+                    : `na revisão ${studiedTopic?.revisions.length + 1}`}
                   ?
                 </label>
                 <input
