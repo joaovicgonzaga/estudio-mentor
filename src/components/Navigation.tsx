@@ -62,25 +62,16 @@ const HeaderContent = () => (
 
 const Navigation = () => {
   return (
-    <div className="flex h-screen w-full">
-      <Sidebar>
-        <HeaderContent />
-        <SidebarContent>
-          <nav className="flex flex-col gap-1 p-4">
-            {NAVIGATION_LINKS.map((link) => (
-              <NavigationLink key={link.to} {...link} />
-            ))}
-          </nav>
-        </SidebarContent>
-      </Sidebar>
-      <div className="flex-1">
-        <div className="sticky top-0 z-50 flex h-16 items-center border-b bg-white px-6">
-          <span className="text-lg font-semibold text-primary">
-            ResidênciaMed
-          </span>
-        </div>
-      </div>
-    </div>
+    <Sidebar>
+      <HeaderContent />
+      <SidebarContent>
+        <nav className="flex flex-col gap-1 p-4">
+          {NAVIGATION_LINKS.map((link) => (
+            <NavigationLink key={link.to} {...link} />
+          ))}
+        </nav>
+      </SidebarContent>
+    </Sidebar>
   );
 };
 

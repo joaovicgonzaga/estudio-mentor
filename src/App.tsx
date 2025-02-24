@@ -34,10 +34,19 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SidebarProvider>
-          <Navigation />
-          <main className="flex-1 p-6">
-            <AppRoutes />
-          </main>
+          <div className="flex h-svh w-full">
+            <Navigation />
+            <div className="flex w-full flex-col overflow-auto">
+              <div className="sticky top-0 z-50 flex h-16 items-center border-b bg-white px-6">
+                <span className="text-lg font-semibold text-primary">
+                  ResidênciaMed
+                </span>
+              </div>
+              <main className="flex-1 overflow-auto p-6">
+                <AppRoutes />
+              </main>
+            </div>
+          </div>
         </SidebarProvider>
       </BrowserRouter>
     </TooltipProvider>
