@@ -38,7 +38,10 @@ const App = () => (
             <Navigation />
             <div className="flex w-full flex-col overflow-auto">
               <div className="sticky top-0 z-50 flex h-16 items-center border-b bg-white px-6">
-                <span className="text-lg font-semibold text-primary">
+                <SidebarTrigger>
+                  <Menu className="h-6 w-6" />
+                </SidebarTrigger>
+                <span className="ml-4 text-lg font-semibold text-primary">
                   ResidênciaMed
                 </span>
               </div>

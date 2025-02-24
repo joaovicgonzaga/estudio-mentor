@@ -49,28 +49,16 @@ const NavigationLink = ({ to, icon: Icon, label }: typeof NAVIGATION_LINKS[numbe
   );
 };
 
-const HeaderContent = () => (
-  <div className="flex h-16 items-center border-b px-6">
-    <SidebarTrigger>
-      <Menu className="h-6 w-6" />
-    </SidebarTrigger>
-    <span className="ml-4 text-lg font-semibold text-primary">
-      ResidênciaMed
-    </span>
-  </div>
-);
-
 const Navigation = () => {
   return (
     <Sidebar>
-      <HeaderContent />
-      <SidebarContent>
+      <SidebarHeader>
         <nav className="flex flex-col gap-1 p-4">
           {NAVIGATION_LINKS.map((link) => (
             <NavigationLink key={link.to} {...link} />
           ))}
         </nav>
-      </SidebarContent>
+      </SidebarHeader>
     </Sidebar>
   );
 };
