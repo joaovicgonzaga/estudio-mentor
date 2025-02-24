@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { Calendar, Clock, BookOpen, CheckCircle } from "lucide-react";
-import { differenceInWeeks, addWeeks, format, isAfter, isSameDay } from "date-fns";
+import { differenceInWeeks, addWeeks, format, isAfter, isSameDay, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +51,6 @@ export default function Schedule() {
     }
   });
 
-  // Simula a obtenção das datas das configurações
   useEffect(() => {
     const storedStartDate = localStorage.getItem("startDate");
     const storedExamDate = localStorage.getItem("examDate");
@@ -63,7 +61,6 @@ export default function Schedule() {
     }
   }, []);
 
-  // Calcula as semanas quando as datas são definidas
   useEffect(() => {
     if (startDate && examDate) {
       const totalWeeks = differenceInWeeks(examDate, startDate) + 1;
@@ -84,16 +81,17 @@ export default function Schedule() {
     }
   }, [startDate, examDate]);
 
-  // Função auxiliar para verificar se uma data está dentro de uma semana específica
   const isDateInWeek = (date: Date, weekStart: Date, weekEnd: Date) => {
-    return isAfter(date, weekStart) && !isAfter(date, weekEnd);
+    return isWithinInterval(date, { start: weekStart, end: weekEnd });
   };
 
-  // Encontra as revisões programadas para uma semana específica
   const getRevisionsForWeek = (weekStart: Date, weekEnd: Date) => {
-    return studiedTopics.filter(topic => 
-      isDateInWeek(new Date(topic.nextRevision), weekStart, weekEnd)
-    );
+    return studiedTopics
+      .filter(topic => {
+        const revisionDate = new Date(topic.nextRevision);
+        return isDateInWeek(revisionDate, weekStart, weekEnd) && isAfter(revisionDate, new Date());
+      })
+      .sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime());
   };
 
   if (!startDate || !examDate) {
