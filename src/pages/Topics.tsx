@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { BookOpen, CheckCircle, ChevronRight, ChevronDown } from "lucide-react";
+import { BookOpen, CheckCircle, ChevronRight, ChevronDown, HelpCircle } from "lucide-react";
 import { addDays, format, isAfter, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 
 // Defining the sequence of revision days
 const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
@@ -292,6 +293,8 @@ export default function Topics() {
   const [revisionInput, setRevisionInput] = useState<RevisionInput | null>(null);
   const [expandedTopics, setExpandedTopics] = useState<Set<number | string>>(new Set());
   const [showingInitialQuestion, setShowingInitialQuestion] = useState<number | string | null>(null);
+  const [openTopicSheet, setOpenTopicSheet] = useState<{ id: number | string, title: string } | null>(null);
+  const [initialQuestionsAnswer, setInitialQuestionsAnswer] = useState<boolean | null>(null);
 
   useEffect(() => {
     localStorage.setItem("studied-topics", JSON.stringify(studiedTopics));
@@ -318,7 +321,6 @@ export default function Topics() {
   };
 
   const handleMarkAsStudied = (topicId: number | string, topicTitle: string) => {
-    const now = new Date();
     const isAlreadyStudied = studiedTopics.some((topic) => topic.id === topicId);
 
     if (isAlreadyStudied) {
@@ -330,21 +332,22 @@ export default function Topics() {
         description: "O tema foi removido da lista de revisões",
       });
     } else {
-      // Ask user about initial questions first, don't create full record yet
-      setShowingInitialQuestion(topicId);
+      // Open the sheet to ask about initial questions
+      setOpenTopicSheet({ id: topicId, title: topicTitle });
+      setInitialQuestionsAnswer(null);
+      // Expand the topic to show the sheet
       setExpandedTopics(prev => {
         const next = new Set(prev);
         next.add(topicId);
         return next;
       });
-      toast({
-        title: "Tema marcado como estudado",
-        description: "Por favor, informe se realizou questões durante o estudo inicial",
-      });
     }
   };
-
-  const handleInitialQuestionsAnswer = (topicId: number | string, topicTitle: string, hasAnsweredQuestions: boolean) => {
+  
+  const handleInitialQuestionsAnswer = (hasAnsweredQuestions: boolean) => {
+    if (!openTopicSheet) return;
+    
+    const { id: topicId, title: topicTitle } = openTopicSheet;
     const now = new Date();
     
     const newStudiedTopic: StudiedTopic = {
@@ -359,16 +362,18 @@ export default function Topics() {
     
     setStudiedTopics([...studiedTopics, newStudiedTopic]);
     setShowingInitialQuestion(null);
+    setInitialQuestionsAnswer(hasAnsweredQuestions);
     
     if (hasAnsweredQuestions) {
-      // If user answered questions, prompt for results
+      // Keep sheet open for D0 revision input
       setRevisionInput({ topicId, correct: "", wrong: "" });
       toast({
         title: "Questões realizadas no estudo inicial",
         description: "Por favor, informe o número de acertos e erros",
       });
     } else {
-      // If no questions, just set up for D1 revision
+      // Close sheet and set up for D1 revision
+      setOpenTopicSheet(null);
       toast({
         title: "Estudo inicial registrado",
         description: `A próxima revisão (D1) está agendada para ${formatDate(addDays(now, REVISION_INTERVALS[0]))}`,
@@ -436,7 +441,9 @@ export default function Topics() {
         return topic;
       })
     );
-
+    
+    // Close the sheet after submitting
+    setOpenTopicSheet(null);
     setRevisionInput(null);
     
     const targetTopic = studiedTopics.find(t => t.id === topicId);
@@ -510,98 +517,147 @@ export default function Topics() {
     return REVISION_INTERVALS[effectiveRevisionCount];
   };
 
-  const renderInitialQuestionPrompt = (topic: any) => {
-    if (!shouldShowInitialQuestion(topic.id)) return null;
+  const renderInitialQuestionsSheet = () => {
+    if (!openTopicSheet) return null;
+
+    const topicId = openTopicSheet.id;
+    const studiedTopic = studiedTopics.find((t) => t.id === topicId);
+    const showRevisionForm = initialQuestionsAnswer && revisionInput?.topicId === topicId;
     
     return (
-      <div className="pt-3 space-y-4">
-        <p className="text-sm font-medium text-gray-700">
-          Fez questões durante os estudos iniciais?
-        </p>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => handleInitialQuestionsAnswer(topic.id, topic.title, true)}
-            variant="default"
-            size="sm"
-          >
-            Sim
-          </Button>
-          <Button
-            onClick={() => handleInitialQuestionsAnswer(topic.id, topic.title, false)}
-            variant="outline"
-            size="sm"
-          >
-            Não
-          </Button>
-        </div>
-      </div>
+      <Sheet open={!!openTopicSheet} onOpenChange={(open) => !open && setOpenTopicSheet(null)}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Registrar estudo de tema</SheetTitle>
+            <SheetDescription>
+              {openTopicSheet.title}
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="py-6 space-y-6">
+            {initialQuestionsAnswer === null ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5 text-blue-500" />
+                  <h3 className="font-medium text-lg">Fez questões durante os estudos iniciais?</h3>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Informar se você realizou questões durante o estudo inicial deste tema ajuda a organizar melhor seu cronograma de revisões.
+                </p>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    onClick={() => handleInitialQuestionsAnswer(true)}
+                    variant="default"
+                    size="lg"
+                    className="w-full"
+                  >
+                    Sim, fiz questões
+                  </Button>
+                  <Button
+                    onClick={() => handleInitialQuestionsAnswer(false)}
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                  >
+                    Não fiz questões
+                  </Button>
+                </div>
+              </div>
+            ) : showRevisionForm ? (
+              <form onSubmit={handleRevisionSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="font-medium text-lg">Registre seus acertos e erros iniciais (D0)</h3>
+                  <p className="text-sm text-gray-600">
+                    Informe a quantidade de questões que você acertou e errou durante o estudo inicial.
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Acertos
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={revisionInput?.correct || ""}
+                      onChange={(e) =>
+                        setRevisionInput(prev => ({
+                          topicId,
+                          correct: e.target.value,
+                          wrong: prev?.wrong || ""
+                        }))
+                      }
+                      placeholder="Número de acertos"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Erros
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={revisionInput?.wrong || ""}
+                      onChange={(e) =>
+                        setRevisionInput(prev => ({
+                          topicId,
+                          correct: prev?.correct || "",
+                          wrong: e.target.value
+                        }))
+                      }
+                      placeholder="Número de erros"
+                    />
+                  </div>
+                </div>
+                
+                <Button
+                  type="submit"
+                  variant="default"
+                  className="w-full mt-4"
+                >
+                  Salvar resultados
+                </Button>
+              </form>
+            ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
     );
   };
 
-  const renderRevisionForm = (topic: any, studiedTopic: StudiedTopic | undefined) => {
-    if (!shouldShowRevisionInput(topic.id) || !studiedTopic) return null;
+  const getSpecialtyColor = (specialtyId: string) => {
+    switch (specialtyId) {
+      case "clinica":
+        return "bg-[#0EA5E9] text-white hover:bg-[#0EA5E9]/90";
+      case "cirurgia":
+        return "bg-[#F97316] text-white hover:bg-[#F97316]/90";
+      case "gineco":
+        return "bg-[#D946EF] text-white hover:bg-[#D946EF]/90";
+      case "preventiva":
+        return "bg-[#8B5CF6] text-white hover:bg-[#8B5CF6]/90";
+      case "pediatria":
+        return "bg-[#84CC16] text-white hover:bg-[#84CC16]/90";
+      default:
+        return "bg-gray-100 text-gray-900 hover:bg-gray-200";
+    }
+  };
 
-    const isD0Revision = studiedTopic.initialQuestionsAnswered && studiedTopic.revisions.length === 0;
-    const currentRevisionDay = isD0Revision ? 0 : REVISION_INTERVALS[studiedTopic.revisions.length - (studiedTopic.initialQuestionsAnswered ? 0 : 1)];
-
-    return (
-      <div className="pt-3">
-        <form onSubmit={handleRevisionSubmit} className="space-y-4">
-          <p className="text-sm font-medium text-gray-700">
-            {isD0Revision 
-              ? "Registre seus acertos e erros iniciais (D0):" 
-              : `Registre os resultados da revisão D${currentRevisionDay}:`}
-          </p>
-          <div className="flex items-center gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Acertos
-              </label>
-              <Input
-                type="number"
-                min="0"
-                value={revisionInput?.topicId === topic.id ? revisionInput.correct : ""}
-                onChange={(e) =>
-                  setRevisionInput(prev => ({
-                    topicId: topic.id,
-                    correct: e.target.value,
-                    wrong: prev?.wrong || ""
-                  }))
-                }
-                className="ml-2 w-20"
-                placeholder="Acertos"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Erros
-              </label>
-              <Input
-                type="number"
-                min="0"
-                value={revisionInput?.topicId === topic.id ? revisionInput.wrong : ""}
-                onChange={(e) =>
-                  setRevisionInput(prev => ({
-                    topicId: topic.id,
-                    correct: prev?.correct || "",
-                    wrong: e.target.value
-                  }))
-                }
-                className="ml-2 w-20"
-                placeholder="Erros"
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="default"
-              size="sm"
-            >
-              Salvar
-            </Button>
-          </div>
-        </form>
-      </div>
-    );
+  const getSpecialtyBorderColor = (specialtyId: string) => {
+    switch (specialtyId) {
+      case "clinica":
+        return "border-[#0EA5E9]/20";
+      case "cirurgia":
+        return "border-[#F97316]/20";
+      case "gineco":
+        return "border-[#D946EF]/20";
+      case "preventiva":
+        return "border-[#8B5CF6]/20";
+      case "pediatria":
+        return "border-[#84CC16]/20";
+      default:
+        return "border-gray-200";
+    }
   };
 
   const renderTopicButton = (topic: any) => {
@@ -664,9 +720,6 @@ export default function Topics() {
                   </Button>
                 ) : (
                   <div className="space-y-3">
-                    {renderInitialQuestionPrompt(topic)}
-                    {studiedTopic && renderRevisionForm(topic, studiedTopic)}
-                    
                     {studiedTopic?.revisions?.length > 0 && (
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-gray-900">Histórico de revisões</h4>
@@ -715,42 +768,9 @@ export default function Topics() {
     );
   };
 
-  const getSpecialtyColor = (specialtyId: string) => {
-    switch (specialtyId) {
-      case "clinica":
-        return "bg-[#0EA5E9] text-white hover:bg-[#0EA5E9]/90";
-      case "cirurgia":
-        return "bg-[#F97316] text-white hover:bg-[#F97316]/90";
-      case "gineco":
-        return "bg-[#D946EF] text-white hover:bg-[#D946EF]/90";
-      case "preventiva":
-        return "bg-[#8B5CF6] text-white hover:bg-[#8B5CF6]/90";
-      case "pediatria":
-        return "bg-[#84CC16] text-white hover:bg-[#84CC16]/90";
-      default:
-        return "bg-gray-100 text-gray-900 hover:bg-gray-200";
-    }
-  };
-
-  const getSpecialtyBorderColor = (specialtyId: string) => {
-    switch (specialtyId) {
-      case "clinica":
-        return "border-[#0EA5E9]/20";
-      case "cirurgia":
-        return "border-[#F97316]/20";
-      case "gineco":
-        return "border-[#D946EF]/20";
-      case "preventiva":
-        return "border-[#8B5CF6]/20";
-      case "pediatria":
-        return "border-[#84CC16]/20";
-      default:
-        return "border-gray-200";
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
+      {renderInitialQuestionsSheet()}
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 space-y-2">
           <span className="text-sm font-medium text-primary">Temas</span>
