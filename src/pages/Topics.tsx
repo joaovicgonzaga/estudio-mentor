@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, ChevronRight, ChevronDown } from "lucide-react";
 import { addDays, format, isAfter, isSameDay } from "date-fns";
@@ -26,6 +25,7 @@ interface StudiedTopic {
   nextRevision: Date;
   currentInterval: number;
   revisions: RevisionRecord[];
+  initialQuestionsAnswered: boolean;
 }
 
 interface RevisionInput {
@@ -281,7 +281,8 @@ export default function Topics() {
         revisions: (topic.revisions || []).map((rev: any) => ({
           ...rev,
           date: new Date(rev.date)
-        }))
+        })),
+        initialQuestionsAnswered: topic.initialQuestionsAnswered ?? false
       }));
     } catch (e) {
       return [];
@@ -290,6 +291,7 @@ export default function Topics() {
 
   const [revisionInput, setRevisionInput] = useState<RevisionInput | null>(null);
   const [expandedTopics, setExpandedTopics] = useState<Set<number | string>>(new Set());
+  const [showingInitialQuestion, setShowingInitialQuestion] = useState<number | string | null>(null);
 
   useEffect(() => {
     localStorage.setItem("studied-topics", JSON.stringify(studiedTopics));
@@ -322,24 +324,54 @@ export default function Topics() {
     if (isAlreadyStudied) {
       setStudiedTopics(studiedTopics.filter((topic) => topic.id !== topicId));
       setRevisionInput(null);
+      setShowingInitialQuestion(null);
       toast({
         title: "Tema desmarcado",
         description: "O tema foi removido da lista de revisões",
       });
     } else {
-      const newStudiedTopic: StudiedTopic = {
-        id: topicId,
-        title: topicTitle,
-        studiedAt: now,
-        nextRevision: addDays(now, REVISION_INTERVALS[0]),
-        currentInterval: 0,
-        revisions: [],
-      };
-      setStudiedTopics([...studiedTopics, newStudiedTopic]);
-      setRevisionInput({ topicId, correct: "", wrong: "" });
+      // Ask user about initial questions first, don't create full record yet
+      setShowingInitialQuestion(topicId);
+      setExpandedTopics(prev => {
+        const next = new Set(prev);
+        next.add(topicId);
+        return next;
+      });
       toast({
         title: "Tema marcado como estudado",
+        description: "Por favor, informe se realizou questões durante o estudo inicial",
+      });
+    }
+  };
+
+  const handleInitialQuestionsAnswer = (topicId: number | string, topicTitle: string, hasAnsweredQuestions: boolean) => {
+    const now = new Date();
+    
+    const newStudiedTopic: StudiedTopic = {
+      id: topicId,
+      title: topicTitle,
+      studiedAt: now,
+      nextRevision: addDays(now, REVISION_INTERVALS[0]),
+      currentInterval: 0,
+      revisions: [],
+      initialQuestionsAnswered: hasAnsweredQuestions
+    };
+    
+    setStudiedTopics([...studiedTopics, newStudiedTopic]);
+    setShowingInitialQuestion(null);
+    
+    if (hasAnsweredQuestions) {
+      // If user answered questions, prompt for results
+      setRevisionInput({ topicId, correct: "", wrong: "" });
+      toast({
+        title: "Questões realizadas no estudo inicial",
         description: "Por favor, informe o número de acertos e erros",
+      });
+    } else {
+      // If no questions, just set up for D1 revision
+      toast({
+        title: "Estudo inicial registrado",
+        description: `A próxima revisão (D1) está agendada para ${formatDate(addDays(now, REVISION_INTERVALS[0]))}`,
       });
     }
   };
@@ -383,8 +415,16 @@ export default function Topics() {
             accuracy,
           };
 
-          const currentInterval = topic.currentInterval;
-          const nextInterval = Math.min(currentInterval + 1, REVISION_INTERVALS.length - 1);
+          // Calculate next interval based on whether this is the first D0 revision or a later one
+          let nextInterval = 0;
+          
+          // If initial questions were answered and this is the first submission, this is D0
+          // Otherwise, advance to the next interval
+          if (topic.initialQuestionsAnswered && topic.revisions.length === 0) {
+            nextInterval = 0; // Stay at index 0 which corresponds to 1 day (D1)
+          } else {
+            nextInterval = Math.min(topic.currentInterval + 1, REVISION_INTERVALS.length - 1);
+          }
           
           return {
             ...topic,
@@ -399,40 +439,118 @@ export default function Topics() {
 
     setRevisionInput(null);
     
-    const nextIntervalIndex = studiedTopics.find(t => t.id === topicId)?.currentInterval || 0;
-    const nextIntervalDays = REVISION_INTERVALS[Math.min(nextIntervalIndex + 1, REVISION_INTERVALS.length - 1)];
+    const targetTopic = studiedTopics.find(t => t.id === topicId);
+    const isInitialRevision = targetTopic?.initialQuestionsAnswered && targetTopic.revisions.length === 0;
+    const nextIntervalIndex = isInitialRevision ? 0 : (targetTopic?.currentInterval || 0) + 1;
+    const nextIntervalDays = REVISION_INTERVALS[Math.min(nextIntervalIndex, REVISION_INTERVALS.length - 1)];
+    
+    const revisionLabel = isInitialRevision ? "Estudo inicial (D0)" : `Revisão D${REVISION_INTERVALS[targetTopic?.currentInterval || 0]}`;
     
     toast({
-      title: "Revisão registrada",
+      title: `${revisionLabel} registrada`,
       description: `Taxa de acerto: ${accuracy.toFixed(1)}%. Próxima revisão em ${nextIntervalDays} dias (D${nextIntervalDays})`,
     });
   };
 
-  // Check if the topic needs revision submission based on completed revisions
+  // Check if the topic should show initial question prompt
+  const shouldShowInitialQuestion = (topicId: number | string) => {
+    return showingInitialQuestion === topicId;
+  };
+
+  // Check if the topic needs revision submission 
   const shouldShowRevisionInput = (topicId: number | string) => {
     const studiedTopic = studiedTopics.find(topic => topic.id === topicId);
-    if (!studiedTopic) return false;
+    if (!studiedTopic || shouldShowInitialQuestion(topicId)) return false;
     
-    // If no revisions yet, show initial revision input
-    if (studiedTopic.revisions.length === 0) return true;
+    // If initial questions were answered but no revisions yet, show D0 input
+    if (studiedTopic.initialQuestionsAnswered && studiedTopic.revisions.length === 0) {
+      return true;
+    }
     
-    // Show next revision input only if current step is complete and there are more steps
+    // Otherwise show revision input based on revision count vs expected intervals
     return studiedTopic.revisions.length < REVISION_INTERVALS.length;
   };
 
-  const renderRevisionForm = (topic: any, studiedTopic: StudiedTopic | undefined) => {
-    if (!shouldShowRevisionInput(topic.id)) return null;
+  const getCurrentRevisionDay = (studiedTopic: StudiedTopic) => {
+    if (!studiedTopic) return null;
+    
+    // If initial questions were answered but no revisions yet, it's D0
+    if (studiedTopic.initialQuestionsAnswered && studiedTopic.revisions.length === 0) {
+      return 0;
+    }
+    
+    // Otherwise get the current revision day based on the last completed revision
+    const revisionsCount = studiedTopic.revisions.length;
+    
+    // If no revisions yet, it's D1 (skipped D0)
+    if (revisionsCount === 0) {
+      return 1;
+    }
+    
+    // If user completed all revisions
+    if (revisionsCount >= REVISION_INTERVALS.length) {
+      return null;
+    }
+    
+    // Otherwise return the next day in the sequence
+    return REVISION_INTERVALS[revisionsCount - (studiedTopic.initialQuestionsAnswered ? 0 : 1)];
+  };
+  
+  const getNextRevisionDay = (topic: StudiedTopic) => {
+    // If the topic hasn't been through all revisions yet
+    const effectiveRevisionCount = topic.revisions.length;
+    if (effectiveRevisionCount >= REVISION_INTERVALS.length) return null;
+    
+    // If initial questions were answered but no revisions recorded, next is D1
+    if (topic.initialQuestionsAnswered && topic.revisions.length === 0) {
+      return REVISION_INTERVALS[0]; // D1
+    }
+    
+    // Otherwise determine next based on current revisions
+    return REVISION_INTERVALS[effectiveRevisionCount];
+  };
 
-    const revisionNumber = studiedTopic?.revisions.length || 0;
-    const currentInterval = REVISION_INTERVALS[revisionNumber];
+  const renderInitialQuestionPrompt = (topic: any) => {
+    if (!shouldShowInitialQuestion(topic.id)) return null;
+    
+    return (
+      <div className="pt-3 space-y-4">
+        <p className="text-sm font-medium text-gray-700">
+          Fez questões durante os estudos iniciais?
+        </p>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => handleInitialQuestionsAnswer(topic.id, topic.title, true)}
+            variant="default"
+            size="sm"
+          >
+            Sim
+          </Button>
+          <Button
+            onClick={() => handleInitialQuestionsAnswer(topic.id, topic.title, false)}
+            variant="outline"
+            size="sm"
+          >
+            Não
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderRevisionForm = (topic: any, studiedTopic: StudiedTopic | undefined) => {
+    if (!shouldShowRevisionInput(topic.id) || !studiedTopic) return null;
+
+    const isD0Revision = studiedTopic.initialQuestionsAnswered && studiedTopic.revisions.length === 0;
+    const currentRevisionDay = isD0Revision ? 0 : REVISION_INTERVALS[studiedTopic.revisions.length - (studiedTopic.initialQuestionsAnswered ? 0 : 1)];
 
     return (
       <div className="pt-3">
         <form onSubmit={handleRevisionSubmit} className="space-y-4">
           <p className="text-sm font-medium text-gray-700">
-            {revisionNumber === 0 
+            {isD0Revision 
               ? "Registre seus acertos e erros iniciais (D0):" 
-              : `Registre os resultados da revisão D${currentInterval}:`}
+              : `Registre os resultados da revisão D${currentRevisionDay}:`}
           </p>
           <div className="flex items-center gap-4">
             <div>
@@ -486,12 +604,6 @@ export default function Topics() {
     );
   };
 
-  const getNextRevisionDay = (topic: StudiedTopic) => {
-    const revisionCount = topic.revisions.length;
-    if (revisionCount >= REVISION_INTERVALS.length) return null;
-    return REVISION_INTERVALS[revisionCount];
-  };
-
   const renderTopicButton = (topic: any) => {
     const studied = isTopicStudied(topic.id);
     const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
@@ -499,6 +611,7 @@ export default function Topics() {
     const lastRevision = studiedTopic?.revisions?.[studiedTopic.revisions.length - 1];
     const lastAccuracy = lastRevision?.accuracy;
     const nextRevisionDay = studiedTopic ? getNextRevisionDay(studiedTopic) : null;
+    const currentRevisionDay = studiedTopic ? getCurrentRevisionDay(studiedTopic) : null;
 
     return (
       <div key={topic.id} className="border-b last:border-b-0">
@@ -517,9 +630,9 @@ export default function Topics() {
                     Acertos: {lastAccuracy.toFixed(1)}%
                   </span>
                 )}
-                {studied && nextRevisionDay && (
+                {studied && currentRevisionDay !== null && (
                   <span className="text-blue-600">
-                    Próxima revisão: D{nextRevisionDay}
+                    Próxima revisão: D{currentRevisionDay}
                   </span>
                 )}
               </div>
@@ -551,6 +664,7 @@ export default function Topics() {
                   </Button>
                 ) : (
                   <div className="space-y-3">
+                    {renderInitialQuestionPrompt(topic)}
                     {studiedTopic && renderRevisionForm(topic, studiedTopic)}
                     
                     {studiedTopic?.revisions?.length > 0 && (
@@ -559,7 +673,16 @@ export default function Topics() {
                         <div className="space-y-1">
                           {studiedTopic.revisions.map((revision, index) => {
                             if (!revision?.accuracy) return null;
-                            const revisionDay = index === 0 ? 0 : REVISION_INTERVALS[index - 1];
+                            
+                            // Calculate which D-day this revision corresponds to
+                            let revisionDay;
+                            if (index === 0 && studiedTopic.initialQuestionsAnswered) {
+                              revisionDay = 0; // D0 for initial questions
+                            } else {
+                              const adjustedIndex = studiedTopic.initialQuestionsAnswered ? index - 1 : index;
+                              revisionDay = adjustedIndex >= 0 ? REVISION_INTERVALS[adjustedIndex] : 0;
+                            }
+                            
                             return (
                               <div key={index} className="flex items-center gap-4 text-sm text-gray-600">
                                 <span>Revisão D{revisionDay}:</span>
