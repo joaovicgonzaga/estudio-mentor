@@ -1,10 +1,14 @@
+
 import { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, ChevronRight, ChevronDown } from "lucide-react";
 import { addDays, format, isAfter, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
+// Defining the sequence of revision days
 const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
 
 interface RevisionRecord {
@@ -272,7 +276,12 @@ export default function Topics() {
       const parsed = JSON.parse(saved);
       return parsed.map((topic: any) => ({
         ...topic,
-        revisions: topic.revisions || [],
+        studiedAt: new Date(topic.studiedAt),
+        nextRevision: new Date(topic.nextRevision),
+        revisions: (topic.revisions || []).map((rev: any) => ({
+          ...rev,
+          date: new Date(rev.date)
+        }))
       }));
     } catch (e) {
       return [];
@@ -342,7 +351,24 @@ export default function Topics() {
     const { topicId, correct, wrong } = revisionInput;
     const correctCount = parseInt(correct);
     const wrongCount = parseInt(wrong);
+    
+    if (isNaN(correctCount) || isNaN(wrongCount)) {
+      toast({
+        title: "Valores inválidos",
+        description: "Por favor, informe números válidos de acertos e erros",
+      });
+      return;
+    }
+    
     const totalCount = correctCount + wrongCount;
+    if (totalCount <= 0) {
+      toast({
+        title: "Valores inválidos",
+        description: "O total de questões deve ser maior que zero",
+      });
+      return;
+    }
+    
     const accuracy = (correctCount / totalCount) * 100;
 
     setStudiedTopics((prevTopics) =>
@@ -358,15 +384,13 @@ export default function Topics() {
           };
 
           const currentInterval = topic.currentInterval;
-          const nextInterval = currentInterval + 1;
+          const nextInterval = Math.min(currentInterval + 1, REVISION_INTERVALS.length - 1);
           
           return {
             ...topic,
             revisions: [...topic.revisions, newRevision],
             currentInterval: nextInterval,
-            nextRevision: nextInterval < REVISION_INTERVALS.length 
-              ? addDays(now, REVISION_INTERVALS[nextInterval])
-              : topic.nextRevision,
+            nextRevision: addDays(now, REVISION_INTERVALS[nextInterval]),
           };
         }
         return topic;
@@ -374,41 +398,48 @@ export default function Topics() {
     );
 
     setRevisionInput(null);
+    
+    const nextIntervalIndex = studiedTopics.find(t => t.id === topicId)?.currentInterval || 0;
+    const nextIntervalDays = REVISION_INTERVALS[Math.min(nextIntervalIndex + 1, REVISION_INTERVALS.length - 1)];
+    
     toast({
       title: "Revisão registrada",
-      description: `Taxa de acerto: ${accuracy.toFixed(1)}%. Próxima revisão em ${REVISION_INTERVALS[studiedTopics.find(t => t.id === topicId)?.currentInterval || 0]} dias`,
+      description: `Taxa de acerto: ${accuracy.toFixed(1)}%. Próxima revisão em ${nextIntervalDays} dias (D${nextIntervalDays})`,
     });
   };
 
+  // Check if the topic needs revision submission based on completed revisions
   const shouldShowRevisionInput = (topicId: number | string) => {
     const studiedTopic = studiedTopics.find(topic => topic.id === topicId);
     if (!studiedTopic) return false;
     
+    // If no revisions yet, show initial revision input
     if (studiedTopic.revisions.length === 0) return true;
-
-    const today = new Date();
-    const nextRevisionDate = new Date(studiedTopic.nextRevision);
-    return studiedTopic.revisions.length < REVISION_INTERVALS.length &&
-      (isSameDay(today, nextRevisionDate) || isAfter(today, nextRevisionDate));
+    
+    // Show next revision input only if current step is complete and there are more steps
+    return studiedTopic.revisions.length < REVISION_INTERVALS.length;
   };
 
   const renderRevisionForm = (topic: any, studiedTopic: StudiedTopic | undefined) => {
     if (!shouldShowRevisionInput(topic.id)) return null;
 
     const revisionNumber = studiedTopic?.revisions.length || 0;
+    const currentInterval = REVISION_INTERVALS[revisionNumber];
 
     return (
       <div className="pt-3">
         <form onSubmit={handleRevisionSubmit} className="space-y-4">
           <p className="text-sm font-medium text-gray-700">
-            {revisionNumber === 0 ? "Registre seus acertos e erros iniciais:" : `Registre os resultados da revisão ${revisionNumber + 1}:`}
+            {revisionNumber === 0 
+              ? "Registre seus acertos e erros iniciais (D0):" 
+              : `Registre os resultados da revisão D${currentInterval}:`}
           </p>
           <div className="flex items-center gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700">
                 Acertos
               </label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 value={revisionInput?.topicId === topic.id ? revisionInput.correct : ""}
@@ -419,7 +450,7 @@ export default function Topics() {
                     wrong: prev?.wrong || ""
                   }))
                 }
-                className="ml-2 w-20 rounded-md border border-gray-300 px-3 py-1 text-sm"
+                className="ml-2 w-20"
                 placeholder="Acertos"
               />
             </div>
@@ -427,7 +458,7 @@ export default function Topics() {
               <label className="text-sm font-medium text-gray-700">
                 Erros
               </label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 value={revisionInput?.topicId === topic.id ? revisionInput.wrong : ""}
@@ -438,20 +469,27 @@ export default function Topics() {
                     wrong: e.target.value
                   }))
                 }
-                className="ml-2 w-20 rounded-md border border-gray-300 px-3 py-1 text-sm"
+                className="ml-2 w-20"
                 placeholder="Erros"
               />
             </div>
-            <button
+            <Button
               type="submit"
-              className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
+              variant="default"
+              size="sm"
             >
               Salvar
-            </button>
+            </Button>
           </div>
         </form>
       </div>
     );
+  };
+
+  const getNextRevisionDay = (topic: StudiedTopic) => {
+    const revisionCount = topic.revisions.length;
+    if (revisionCount >= REVISION_INTERVALS.length) return null;
+    return REVISION_INTERVALS[revisionCount];
   };
 
   const renderTopicButton = (topic: any) => {
@@ -460,6 +498,7 @@ export default function Topics() {
     const isExpanded = expandedTopics.has(topic.id);
     const lastRevision = studiedTopic?.revisions?.[studiedTopic.revisions.length - 1];
     const lastAccuracy = lastRevision?.accuracy;
+    const nextRevisionDay = studiedTopic ? getNextRevisionDay(studiedTopic) : null;
 
     return (
       <div key={topic.id} className="border-b last:border-b-0">
@@ -476,6 +515,11 @@ export default function Topics() {
                 {studied && lastAccuracy !== undefined && (
                   <span className="text-green-600">
                     Acertos: {lastAccuracy.toFixed(1)}%
+                  </span>
+                )}
+                {studied && nextRevisionDay && (
+                  <span className="text-blue-600">
+                    Próxima revisão: D{nextRevisionDay}
                   </span>
                 )}
               </div>
@@ -496,13 +540,15 @@ export default function Topics() {
             <div className="border-t bg-gray-50 px-6 py-4">
               <div className="space-y-4">
                 {!studied ? (
-                  <button
+                  <Button
                     onClick={() => handleMarkAsStudied(topic.id, topic.title)}
-                    className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-primary/90"
+                    variant="default"
+                    size="sm"
+                    className="inline-flex items-center gap-2"
                   >
                     <CheckCircle className="h-4 w-4" />
                     Marcar como estudado
-                  </button>
+                  </Button>
                 ) : (
                   <div className="space-y-3">
                     {studiedTopic && renderRevisionForm(topic, studiedTopic)}
@@ -513,9 +559,10 @@ export default function Topics() {
                         <div className="space-y-1">
                           {studiedTopic.revisions.map((revision, index) => {
                             if (!revision?.accuracy) return null;
+                            const revisionDay = index === 0 ? 0 : REVISION_INTERVALS[index - 1];
                             return (
                               <div key={index} className="flex items-center gap-4 text-sm text-gray-600">
-                                <span>Revisão {index + 1} (D{REVISION_INTERVALS[index]}):</span>
+                                <span>Revisão D{revisionDay}:</span>
                                 <span>{revision.correctCount} acertos</span>
                                 <span>{revision.wrongCount} erros</span>
                                 <span className="font-medium text-green-600">
@@ -528,12 +575,13 @@ export default function Topics() {
                       </div>
                     )}
 
-                    <button
+                    <Button
                       onClick={() => handleMarkAsStudied(topic.id, topic.title)}
-                      className="text-sm text-red-600 hover:text-red-700"
+                      variant="destructive"
+                      size="sm"
                     >
                       Desmarcar tema
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -646,6 +694,7 @@ export default function Topics() {
                   .map((topic) => {
                     const lastRevision = topic.revisions?.[topic.revisions.length - 1];
                     const lastAccuracy = lastRevision?.accuracy;
+                    const nextRevisionDay = getNextRevisionDay(topic);
 
                     return (
                       <div
@@ -673,6 +722,11 @@ export default function Topics() {
                           </p>
                           <p className="text-sm text-gray-600">
                             {formatDate(new Date(topic.nextRevision))}
+                            {nextRevisionDay && (
+                              <span className="ml-2 text-blue-600">
+                                (D{nextRevisionDay})
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
