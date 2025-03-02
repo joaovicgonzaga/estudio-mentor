@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Calendar, Clock, BookOpen, CheckCircle } from "lucide-react";
-import { differenceInWeeks, addWeeks, format, isAfter, isSameDay, isWithinInterval } from "date-fns";
+import { differenceInWeeks, addWeeks, addDays, format, isAfter, isSameDay, isWithinInterval, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface WeekSchedule {
   weekNumber: number;
@@ -26,6 +28,9 @@ interface StudiedTopic {
   currentInterval: number;
   revisions: RevisionRecord[];
 }
+
+// Spaced repetition intervals in days
+const REVISION_INTERVALS = [1, 7, 30, 60, 120, 240];
 
 export default function Schedule() {
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -81,24 +86,44 @@ export default function Schedule() {
     }
   }, [startDate, examDate]);
 
-  const isDateInWeek = (date: Date, weekStart: Date, weekEnd: Date) => {
-    return isWithinInterval(date, { start: weekStart, end: weekEnd });
+  // Generate all future revisions for a topic based on spaced repetition
+  const generateTopicRevisions = (topic: StudiedTopic) => {
+    const revisions = [];
+    const baseDate = new Date(topic.studiedAt);
+    
+    for (const interval of REVISION_INTERVALS) {
+      const revisionDate = addDays(baseDate, interval);
+      // Only include future revisions
+      if (isAfter(revisionDate, new Date())) {
+        revisions.push({
+          topicId: topic.id,
+          topic: topic.title,
+          date: revisionDate,
+          interval: interval,
+          intervalLabel: `D${interval}`,
+          studiedAt: topic.studiedAt,
+          accuracy: topic.revisions.length > 0 
+            ? topic.revisions[topic.revisions.length - 1].accuracy 
+            : null
+        });
+      }
+    }
+    
+    return revisions;
   };
 
+  // Get all planned revisions for all topics
+  const getAllPlannedRevisions = () => {
+    return studiedTopics.flatMap(generateTopicRevisions)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  };
+
+  // Get revisions that fall within a specific week
   const getRevisionsForWeek = (weekStart: Date, weekEnd: Date) => {
-    return studiedTopics
-      .filter(topic => {
-        const revisionDate = new Date(topic.nextRevision);
-        return isDateInWeek(revisionDate, weekStart, weekEnd) && isAfter(revisionDate, new Date());
-      })
-      .sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime());
-  };
-
-  const getAllFutureRevisions = () => {
-    const today = new Date();
-    return studiedTopics
-      .filter(topic => isAfter(new Date(topic.nextRevision), today))
-      .sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime());
+    const allRevisions = getAllPlannedRevisions();
+    return allRevisions.filter(revision => 
+      isWithinInterval(revision.date, { start: weekStart, end: weekEnd })
+    );
   };
 
   if (!startDate || !examDate) {
@@ -130,7 +155,7 @@ export default function Schedule() {
     );
   }
 
-  const futureRevisions = getAllFutureRevisions();
+  const allPlannedRevisions = getAllPlannedRevisions();
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
@@ -145,50 +170,15 @@ export default function Schedule() {
           </p>
         </div>
 
-        {futureRevisions.length > 0 && (
-          <div className="mb-8">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Todas as Revisões Futuras
-              </h2>
-              <p className="text-sm text-gray-600">
-                Todas as revisões programadas em ordem cronológica
-              </p>
-            </div>
-            <div className="rounded-lg border bg-white">
-              <div className="divide-y">
-                {futureRevisions.map((topic) => {
-                  const lastRevision = topic.revisions[topic.revisions.length - 1];
-                  
-                  return (
-                    <div
-                      key={topic.id}
-                      className="flex items-center justify-between px-6 py-4"
-                    >
-                      <div>
-                        <h3 className="font-medium text-gray-900">{topic.title}</h3>
-                        <p className="text-sm text-gray-600">
-                          Estudado em: {format(new Date(topic.studiedAt), "dd 'de' MMMM", { locale: ptBR })}
-                        </p>
-                        {lastRevision && (
-                          <p className="text-sm text-green-600">
-                            {lastRevision.accuracy.toFixed(1)}% de acerto na última revisão
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">
-                          Próxima revisão
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {format(new Date(topic.nextRevision), "dd 'de' MMMM", { locale: ptBR })}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        {allPlannedRevisions.length === 0 && (
+          <div className="rounded-lg border bg-white p-6 text-center mb-8">
+            <BookOpen className="mx-auto h-12 w-12 text-primary/50" />
+            <h2 className="mt-4 text-lg font-medium text-gray-900">
+              Nenhuma revisão programada
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Adicione tópicos estudados na aba "Tópicos" para ver o cronograma de revisões
+            </p>
           </div>
         )}
 
@@ -199,7 +189,10 @@ export default function Schedule() {
             return (
               <div
                 key={week.weekNumber}
-                className="rounded-lg border bg-white p-6 transition-all hover:border-primary"
+                className={cn(
+                  "rounded-lg border bg-white p-6 transition-all",
+                  revisionsThisWeek.length > 0 ? "border-primary/50" : "hover:border-primary/30"
+                )}
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -220,24 +213,32 @@ export default function Schedule() {
                       Revisões Programadas
                     </h3>
                     <div className="space-y-2">
-                      {revisionsThisWeek.map((topic) => (
+                      {revisionsThisWeek.map((revision, index) => (
                         <div
-                          key={topic.id}
+                          key={`${revision.topicId}-${revision.interval}-${index}`}
                           className="flex items-center gap-2 rounded-md bg-primary/5 px-4 py-3"
                         >
                           <BookOpen className="h-4 w-4 text-primary" />
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{topic.title}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">{revision.topic}</p>
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                {revision.intervalLabel}
+                              </span>
+                            </div>
                             <p className="text-sm text-gray-600">
-                              Revisão em: {format(new Date(topic.nextRevision), "dd 'de' MMMM", { locale: ptBR })}
+                              Revisão em: {format(revision.date, "dd 'de' MMMM", { locale: ptBR })}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Estudado em: {format(revision.studiedAt, "dd 'de' MMMM", { locale: ptBR })}
                             </p>
                           </div>
-                          {topic.revisions.length > 0 && (
+                          {revision.accuracy !== null && (
                             <div className="text-right text-sm">
                               <p className="font-medium text-green-600">
-                                {topic.revisions[topic.revisions.length - 1].accuracy.toFixed(1)}% de acerto
+                                {revision.accuracy.toFixed(1)}% de acerto
                               </p>
-                              <p className="text-gray-500">
+                              <p className="text-gray-500 text-xs">
                                 Última revisão
                               </p>
                             </div>
