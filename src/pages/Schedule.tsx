@@ -94,6 +94,13 @@ export default function Schedule() {
       .sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime());
   };
 
+  const getAllFutureRevisions = () => {
+    const today = new Date();
+    return studiedTopics
+      .filter(topic => isAfter(new Date(topic.nextRevision), today))
+      .sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime());
+  };
+
   if (!startDate || !examDate) {
     return (
       <div className="min-h-screen bg-gray-50 px-6 py-8">
@@ -123,6 +130,8 @@ export default function Schedule() {
     );
   }
 
+  const futureRevisions = getAllFutureRevisions();
+
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
       <div className="mx-auto max-w-7xl">
@@ -135,6 +144,53 @@ export default function Schedule() {
             {`${weeks.length} semanas de estudo programadas`}
           </p>
         </div>
+
+        {futureRevisions.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Todas as Revisões Futuras
+              </h2>
+              <p className="text-sm text-gray-600">
+                Todas as revisões programadas em ordem cronológica
+              </p>
+            </div>
+            <div className="rounded-lg border bg-white">
+              <div className="divide-y">
+                {futureRevisions.map((topic) => {
+                  const lastRevision = topic.revisions[topic.revisions.length - 1];
+                  
+                  return (
+                    <div
+                      key={topic.id}
+                      className="flex items-center justify-between px-6 py-4"
+                    >
+                      <div>
+                        <h3 className="font-medium text-gray-900">{topic.title}</h3>
+                        <p className="text-sm text-gray-600">
+                          Estudado em: {format(new Date(topic.studiedAt), "dd 'de' MMMM", { locale: ptBR })}
+                        </p>
+                        {lastRevision && (
+                          <p className="text-sm text-green-600">
+                            {lastRevision.accuracy.toFixed(1)}% de acerto na última revisão
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">
+                          Próxima revisão
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {format(new Date(topic.nextRevision), "dd 'de' MMMM", { locale: ptBR })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-6">
           {weeks.map((week) => {
