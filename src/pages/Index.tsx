@@ -140,9 +140,9 @@ const Index = () => {
             trend={{ value: 4, isPositive: true }}
           />
           <StatCard
-            title="Sequência de Acertos"
-            value="14"
-            description="Melhor sequência: 23"
+            title="Taxa de Acerto Total"
+            value="72%"
+            description="Todas as questões respondidas"
             icon={CheckCircle}
             trend={{ value: 2, isPositive: true }}
           />
