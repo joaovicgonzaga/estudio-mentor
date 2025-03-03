@@ -14,11 +14,13 @@ import Topics from "./pages/Topics";
 import Metrics from "./pages/Metrics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
 
 const queryClient = new QueryClient();
 
 const AppRoutes = () => (
   <Routes>
+    <Route path="/login" element={<Login />} />
     <Route path="/" element={<Index />} />
     <Route path="/cronograma" element={<Schedule />} />
     <Route path="/temas" element={<Topics />} />
