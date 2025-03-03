@@ -1,39 +1,15 @@
 import { useState, useEffect } from "react";
-import { BookOpen, CheckCircle, ChevronRight, ChevronDown, HelpCircle } from "lucide-react";
-import { addDays, format, isAfter, isSameDay } from "date-fns";
+import { format } from "date-fns";
+import { addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { SpecialtySection } from "@/components/topics/SpecialtySection";
+import { StudyRegistrationSheet } from "@/components/topics/StudyRegistrationSheet";
+import { NextRevisionsSection } from "@/components/topics/NextRevisionsSection";
+import { StudiedTopic, RevisionInput, Specialty } from "@/types/study";
 
 // Defining the sequence of revision days
 const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
-
-interface RevisionRecord {
-  date: Date;
-  correctCount: number;
-  wrongCount: number;
-  totalCount: number;
-  accuracy: number;
-}
-
-interface StudiedTopic {
-  id: number | string;
-  title: string;
-  studiedAt: Date;
-  nextRevision: Date;
-  currentInterval: number;
-  revisions: RevisionRecord[];
-  initialQuestionsAnswered: boolean;
-}
-
-interface RevisionInput {
-  topicId: number | string;
-  correct: string;
-  wrong: string;
-}
 
 const specialties = [
   {
@@ -412,7 +388,7 @@ export default function Topics() {
       prevTopics.map((topic) => {
         if (topic.id === topicId) {
           const now = new Date();
-          const newRevision: RevisionRecord = {
+          const newRevision = {
             date: now,
             correctCount,
             wrongCount,
@@ -457,6 +433,10 @@ export default function Topics() {
       title: `${revisionLabel} registrada`,
       description: `Taxa de acerto: ${accuracy.toFixed(1)}%. Próxima revisão em ${nextIntervalDays} dias (D${nextIntervalDays})`,
     });
+  };
+
+  const handleRevisionInputChange = (input: RevisionInput) => {
+    setRevisionInput(input);
   };
 
   // Check if the topic should show initial question prompt
@@ -517,260 +497,19 @@ export default function Topics() {
     return REVISION_INTERVALS[effectiveRevisionCount];
   };
 
-  const renderInitialQuestionsSheet = () => {
-    if (!openTopicSheet) return null;
-
-    const topicId = openTopicSheet.id;
-    const studiedTopic = studiedTopics.find((t) => t.id === topicId);
-    const showRevisionForm = initialQuestionsAnswer && revisionInput?.topicId === topicId;
-    
-    return (
-      <Sheet open={!!openTopicSheet} onOpenChange={(open) => !open && setOpenTopicSheet(null)}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Registrar estudo de tema</SheetTitle>
-            <SheetDescription>
-              {openTopicSheet.title}
-            </SheetDescription>
-          </SheetHeader>
-          
-          <div className="py-6 space-y-6">
-            {initialQuestionsAnswer === null ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-blue-500" />
-                  <h3 className="font-medium text-lg">Fez questões durante os estudos iniciais?</h3>
-                </div>
-                <p className="text-sm text-gray-600">
-                  Informar se você realizou questões durante o estudo inicial deste tema ajuda a organizar melhor seu cronograma de revisões.
-                </p>
-                <div className="flex items-center gap-3 pt-2">
-                  <Button
-                    onClick={() => handleInitialQuestionsAnswer(true)}
-                    variant="default"
-                    size="lg"
-                    className="w-full"
-                  >
-                    Sim, fiz questões
-                  </Button>
-                  <Button
-                    onClick={() => handleInitialQuestionsAnswer(false)}
-                    variant="outline"
-                    size="lg"
-                    className="w-full"
-                  >
-                    Não fiz questões
-                  </Button>
-                </div>
-              </div>
-            ) : showRevisionForm ? (
-              <form onSubmit={handleRevisionSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="font-medium text-lg">Registre seus acertos e erros iniciais (D0)</h3>
-                  <p className="text-sm text-gray-600">
-                    Informe a quantidade de questões que você acertou e errou durante o estudo inicial.
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Acertos
-                    </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={revisionInput?.correct || ""}
-                      onChange={(e) =>
-                        setRevisionInput(prev => ({
-                          topicId,
-                          correct: e.target.value,
-                          wrong: prev?.wrong || ""
-                        }))
-                      }
-                      placeholder="Número de acertos"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Erros
-                    </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={revisionInput?.wrong || ""}
-                      onChange={(e) =>
-                        setRevisionInput(prev => ({
-                          topicId,
-                          correct: prev?.correct || "",
-                          wrong: e.target.value
-                        }))
-                      }
-                      placeholder="Número de erros"
-                    />
-                  </div>
-                </div>
-                
-                <Button
-                  type="submit"
-                  variant="default"
-                  className="w-full mt-4"
-                >
-                  Salvar resultados
-                </Button>
-              </form>
-            ) : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  };
-
-  const getSpecialtyColor = (specialtyId: string) => {
-    switch (specialtyId) {
-      case "clinica":
-        return "bg-[#0EA5E9] text-white hover:bg-[#0EA5E9]/90";
-      case "cirurgia":
-        return "bg-[#F97316] text-white hover:bg-[#F97316]/90";
-      case "gineco":
-        return "bg-[#D946EF] text-white hover:bg-[#D946EF]/90";
-      case "preventiva":
-        return "bg-[#8B5CF6] text-white hover:bg-[#8B5CF6]/90";
-      case "pediatria":
-        return "bg-[#84CC16] text-white hover:bg-[#84CC16]/90";
-      default:
-        return "bg-gray-100 text-gray-900 hover:bg-gray-200";
-    }
-  };
-
-  const getSpecialtyBorderColor = (specialtyId: string) => {
-    switch (specialtyId) {
-      case "clinica":
-        return "border-[#0EA5E9]/20";
-      case "cirurgia":
-        return "border-[#F97316]/20";
-      case "gineco":
-        return "border-[#D946EF]/20";
-      case "preventiva":
-        return "border-[#8B5CF6]/20";
-      case "pediatria":
-        return "border-[#84CC16]/20";
-      default:
-        return "border-gray-200";
-    }
-  };
-
-  const renderTopicButton = (topic: any) => {
-    const studied = isTopicStudied(topic.id);
-    const studiedTopic = studiedTopics.find((t) => t.id === topic.id);
-    const isExpanded = expandedTopics.has(topic.id);
-    const lastRevision = studiedTopic?.revisions?.[studiedTopic.revisions.length - 1];
-    const lastAccuracy = lastRevision?.accuracy;
-    const nextRevisionDay = studiedTopic ? getNextRevisionDay(studiedTopic) : null;
-    const currentRevisionDay = studiedTopic ? getCurrentRevisionDay(studiedTopic) : null;
-
-    return (
-      <div key={topic.id} className="border-b last:border-b-0">
-        <div className="flex w-full flex-col">
-          <div className="flex w-full items-center justify-between px-6 py-4 transition-colors hover:bg-gray-50">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-gray-900">{topic.title}</p>
-                {studied && <CheckCircle className="h-4 w-4 text-green-500" />}
-              </div>
-              <p className="text-sm text-gray-600">{topic.description}</p>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span>{topic.questionsCount} questões</span>
-                {studied && lastAccuracy !== undefined && (
-                  <span className="text-green-600">
-                    Acertos: {lastAccuracy.toFixed(1)}%
-                  </span>
-                )}
-                {studied && currentRevisionDay !== null && (
-                  <span className="text-blue-600">
-                    Próxima revisão: D{currentRevisionDay}
-                  </span>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => toggleTopicExpansion(topic.id)}
-              className="transform transition-transform duration-200"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-5 w-5 text-gray-400" />
-              ) : (
-                <ChevronRight className="h-5 w-5 text-gray-400" />
-              )}
-            </button>
-          </div>
-
-          {isExpanded && (
-            <div className="border-t bg-gray-50 px-6 py-4">
-              <div className="space-y-4">
-                {!studied ? (
-                  <Button
-                    onClick={() => handleMarkAsStudied(topic.id, topic.title)}
-                    variant="default"
-                    size="sm"
-                    className="inline-flex items-center gap-2"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Marcar como estudado
-                  </Button>
-                ) : (
-                  <div className="space-y-3">
-                    {studiedTopic?.revisions?.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-gray-900">Histórico de revisões</h4>
-                        <div className="space-y-1">
-                          {studiedTopic.revisions.map((revision, index) => {
-                            if (!revision?.accuracy) return null;
-                            
-                            // Calculate which D-day this revision corresponds to
-                            let revisionDay;
-                            if (index === 0 && studiedTopic.initialQuestionsAnswered) {
-                              revisionDay = 0; // D0 for initial questions
-                            } else {
-                              const adjustedIndex = studiedTopic.initialQuestionsAnswered ? index - 1 : index;
-                              revisionDay = adjustedIndex >= 0 ? REVISION_INTERVALS[adjustedIndex] : 0;
-                            }
-                            
-                            return (
-                              <div key={index} className="flex items-center gap-4 text-sm text-gray-600">
-                                <span>Revisão D{revisionDay}:</span>
-                                <span>{revision.correctCount} acertos</span>
-                                <span>{revision.wrongCount} erros</span>
-                                <span className="font-medium text-green-600">
-                                  {revision.accuracy.toFixed(1)}% de acerto
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={() => handleMarkAsStudied(topic.id, topic.title)}
-                      variant="destructive"
-                      size="sm"
-                    >
-                      Desmarcar tema
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
-      {renderInitialQuestionsSheet()}
+      <StudyRegistrationSheet
+        open={!!openTopicSheet}
+        onOpenChange={(open) => !open && setOpenTopicSheet(null)}
+        topicInfo={openTopicSheet}
+        initialQuestionsAnswer={initialQuestionsAnswer}
+        onInitialQuestionsAnswer={handleInitialQuestionsAnswer}
+        revisionInput={revisionInput}
+        onRevisionInputChange={handleRevisionInputChange}
+        onRevisionSubmit={handleRevisionSubmit}
+      />
+      
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 space-y-2">
           <span className="text-sm font-medium text-primary">Temas</span>
@@ -784,101 +523,25 @@ export default function Topics() {
 
         <div className="space-y-6">
           {specialties.map((specialty) => (
-            <div 
-              key={specialty.id} 
-              className={cn(
-                "rounded-lg border bg-white", 
-                getSpecialtyBorderColor(specialty.id)
-              )}
-            >
-              <div className={cn(
-                "rounded-t-lg p-6",
-                getSpecialtyColor(specialty.id)
-              )}>
-                <h2 className="text-xl font-semibold">
-                  {specialty.title}
-                </h2>
-              </div>
-              <div className="divide-y">
-                {specialty.topics.map((topic) => {
-                  if ('subtopics' in topic) {
-                    return (
-                      <div key={topic.id} className="divide-y">
-                        <div className="bg-gray-50 px-6 py-4">
-                          <h3 className="font-medium text-gray-900">
-                            {topic.title}
-                          </h3>
-                        </div>
-                        {topic.subtopics.map((subtopic) => renderTopicButton(subtopic))}
-                      </div>
-                    );
-                  }
-                  return renderTopicButton(topic);
-                })}
-              </div>
-            </div>
+            <SpecialtySection
+              key={specialty.id}
+              specialty={specialty}
+              expandedTopics={expandedTopics}
+              studiedTopics={studiedTopics}
+              toggleTopicExpansion={toggleTopicExpansion}
+              handleMarkAsStudied={handleMarkAsStudied}
+              formatDate={formatDate}
+              getCurrentRevisionDay={getCurrentRevisionDay}
+              REVISION_INTERVALS={REVISION_INTERVALS}
+            />
           ))}
         </div>
 
-        {studiedTopics.length > 0 && (
-          <div className="mt-8">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Próximas Revisões
-              </h2>
-              <p className="text-sm text-gray-600">
-                Temas que você precisa revisar em ordem cronológica
-              </p>
-            </div>
-            <div className="rounded-lg border bg-white">
-              <div className="divide-y">
-                {studiedTopics
-                  .sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime())
-                  .map((topic) => {
-                    const lastRevision = topic.revisions?.[topic.revisions.length - 1];
-                    const lastAccuracy = lastRevision?.accuracy;
-                    const nextRevisionDay = getNextRevisionDay(topic);
-
-                    return (
-                      <div
-                        key={topic.id}
-                        className="flex items-center justify-between px-6 py-4"
-                      >
-                        <div>
-                          <h3 className="font-medium text-gray-900">
-                            {topic.title}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            Estudado em: {formatDate(new Date(topic.studiedAt))}
-                          </p>
-                          <div className="mt-1 text-sm text-gray-500">
-                            {lastAccuracy !== undefined && (
-                              <span>
-                                Última taxa de acerto: {lastAccuracy.toFixed(1)}%
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">
-                            Próxima revisão
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {formatDate(new Date(topic.nextRevision))}
-                            {nextRevisionDay && (
-                              <span className="ml-2 text-blue-600">
-                                (D{nextRevisionDay})
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          </div>
-        )}
+        <NextRevisionsSection
+          studiedTopics={studiedTopics}
+          formatDate={formatDate}
+          getNextRevisionDay={getNextRevisionDay}
+        />
       </div>
     </div>
   );
