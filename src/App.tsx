@@ -43,7 +43,7 @@ const App = () => (
                   <Menu className="h-6 w-6" />
                 </SidebarTrigger>
                 <span className="ml-4 text-lg font-semibold text-primary">
-                  ResidênciaMed
+                  MEDTracker
                 </span>
               </div>
               <main className="flex-1 overflow-auto p-6">
