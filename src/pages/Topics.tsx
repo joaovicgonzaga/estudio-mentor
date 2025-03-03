@@ -8,8 +8,8 @@ import { StudyRegistrationSheet } from "@/components/topics/StudyRegistrationShe
 import { NextRevisionsSection } from "@/components/topics/NextRevisionsSection";
 import { StudiedTopic, RevisionInput, Specialty } from "@/types/study";
 
-// Defining the sequence of revision days
-const REVISION_INTERVALS = [1, 7, 30, 60, 90, 180];
+// Defining the sequence of revision days - updated to follow D1, D7, D30 and then every 30 days
+const REVISION_INTERVALS = [1, 7, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360];
 
 const specialties = [
   {

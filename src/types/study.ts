@@ -1,4 +1,3 @@
-
 export interface RevisionRecord {
   date: Date;
   correctCount: number;
@@ -41,3 +40,11 @@ export interface Specialty {
   title: string;
   topics: (Topic | { id: string; title: string; subtopics: Topic[] })[];
 }
+
+/**
+ * Standard revision intervals in days:
+ * D1: 1 day after initial study
+ * D7: 7 days after initial study
+ * D30: 30 days after initial study
+ * Then every 30 days: D60, D90, D120, D150, etc.
+ */

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar, Clock, BookOpen, CheckCircle } from "lucide-react";
 import { differenceInWeeks, addWeeks, addDays, format, isAfter, isSameDay, isWithinInterval, differenceInDays } from "date-fns";
@@ -29,8 +28,8 @@ interface StudiedTopic {
   revisions: RevisionRecord[];
 }
 
-// Spaced repetition intervals in days
-const REVISION_INTERVALS = [1, 7, 30, 60, 120, 240];
+// Spaced repetition intervals in days - updated to follow D1, D7, D30 and then every 30 days
+const REVISION_INTERVALS = [1, 7, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360];
 
 export default function Schedule() {
   const [startDate, setStartDate] = useState<Date | null>(null);
