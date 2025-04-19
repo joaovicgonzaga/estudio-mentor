@@ -1,5 +1,4 @@
-
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
 import {
@@ -12,102 +11,194 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Brain, Target, CheckCircle } from "lucide-react";
+import { StudiedTopic } from "@/types/study";
 
-const performanceData = [
-  { subject: "Cardiologia", você: 75, média: 65 },
-  { subject: "Neurologia", você: 85, média: 70 },
-  { subject: "Pediatria", você: 65, média: 68 },
-  { subject: "Cirurgia", você: 70, média: 72 },
-];
+const useStudiedTopics = () => {
+  const getStudiedTopics = (): StudiedTopic[] => {
+    const saved = localStorage.getItem("studied-topics");
+    if (!saved) return [];
+    
+    try {
+      const parsed = JSON.parse(saved);
+      return parsed.map((topic: any) => ({
+        ...topic,
+        studiedAt: new Date(topic.studiedAt),
+        nextRevision: new Date(topic.nextRevision),
+        revisions: (topic.revisions || []).map((rev: any) => ({
+          ...rev,
+          date: new Date(rev.date)
+        }))
+      }));
+    } catch (e) {
+      console.error("Error parsing studied topics:", e);
+      return [];
+    }
+  };
 
-const reviewAlerts = [
-  { subject: "Cardiologia - ECG", daysUntilReview: 1 },
-  { subject: "Neurologia - Epilepsia", daysUntilReview: 2 },
-  { subject: "Pediatria - Vacinas", daysUntilReview: 4 },
-];
-
-const themes = [
-  {
-    id: 1,
-    title: "Cardiologia",
-    description: "Doenças cardiovasculares, ECG e tratamentos",
-    progress: 65,
-    questionsCount: 120,
-    correctAnswers: 78,
-  },
-  {
-    id: 2,
-    title: "Neurologia",
-    description: "Sistema nervoso, patologias e diagnósticos",
-    progress: 45,
-    questionsCount: 85,
-    correctAnswers: 38,
-  },
-  {
-    id: 3,
-    title: "Pediatria",
-    description: "Desenvolvimento infantil e doenças pediátricas",
-    progress: 30,
-    questionsCount: 150,
-    correctAnswers: 45,
-  },
-  {
-    id: 4,
-    title: "Cirurgia Geral",
-    description: "Técnicas cirúrgicas e cuidados pré/pós-operatórios",
-    progress: 25,
-    questionsCount: 95,
-    correctAnswers: 24,
-  },
-];
-
-const ThemeCard = ({
-  title,
-  description,
-  progress,
-  questionsCount,
-  correctAnswers,
-}: {
-  title: string;
-  description: string;
-  progress: number;
-  questionsCount: number;
-  correctAnswers: number;
-}) => {
-  const accuracy = Math.round((correctAnswers / questionsCount) * 100) || 0;
-  
-  return (
-    <div className="group relative rounded-lg border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          <p className="mt-1 text-sm text-gray-600">{description}</p>
-        </div>
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>{questionsCount} questões</span>
-          <span>{accuracy}% de acerto</span>
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-900">Progresso</span>
-            <span className="text-sm font-medium text-primary">{progress}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-200">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return getStudiedTopics();
 };
 
 const Index = () => {
+  const studiedTopics = useStudiedTopics();
+  
+  const metrics = useMemo(() => {
+    const totalQuestions = studiedTopics.reduce((sum, topic) => {
+      const topicQuestions = topic.revisions.reduce((total, rev) => 
+        total + rev.totalCount, 0);
+      return sum + topicQuestions;
+    }, 0);
+
+    const weeklyQuestions = studiedTopics.reduce((sum, topic) => {
+      const weeklyRevisions = topic.revisions.filter(rev => {
+        const revDate = new Date(rev.date);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return revDate >= weekAgo;
+      });
+      return sum + weeklyRevisions.reduce((total, rev) => total + rev.totalCount, 0);
+    }, 0);
+
+    const correctAnswers = studiedTopics.reduce((sum, topic) => {
+      return sum + topic.revisions.reduce((total, rev) => total + rev.correctCount, 0);
+    }, 0);
+
+    const totalAccuracy = totalQuestions > 0 
+      ? Math.round((correctAnswers / totalQuestions) * 100) 
+      : 0;
+
+    return {
+      totalQuestions,
+      weeklyQuestions,
+      totalAccuracy
+    };
+  }, [studiedTopics]);
+
+  const specialtyPerformance = useMemo(() => {
+    const specialties = new Map();
+
+    studiedTopics.forEach(topic => {
+      const specialty = topic.title.split(' - ')[0];
+      
+      if (!specialties.has(specialty)) {
+        specialties.set(specialty, {
+          correct: 0,
+          total: 0,
+          média: 70
+        });
+      }
+
+      const stats = specialties.get(specialty);
+      topic.revisions.forEach(rev => {
+        stats.correct += rev.correctCount;
+        stats.total += rev.totalCount;
+      });
+    });
+
+    return Array.from(specialties.entries()).map(([subject, stats]) => ({
+      subject,
+      você: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      média: stats.média
+    }));
+  }, [studiedTopics]);
+
+  const upcomingReviews = useMemo(() => {
+    return studiedTopics
+      .filter(topic => {
+        const daysUntilReview = Math.ceil(
+          (new Date(topic.nextRevision).getTime() - new Date().getTime()) / 
+          (1000 * 60 * 60 * 24)
+        );
+        return daysUntilReview > 0 && daysUntilReview <= 7;
+      })
+      .map(topic => ({
+        subject: topic.title,
+        daysUntilReview: Math.ceil(
+          (new Date(topic.nextRevision).getTime() - new Date().getTime()) / 
+          (1000 * 60 * 60 * 24)
+        )
+      }))
+      .sort((a, b) => a.daysUntilReview - b.daysUntilReview)
+      .slice(0, 3);
+  }, [studiedTopics]);
+
+  const themes = useMemo(() => {
+    const themeStats = new Map();
+
+    studiedTopics.forEach(topic => {
+      const themeName = topic.title.split(' - ')[0];
+      
+      if (!themeStats.has(themeName)) {
+        themeStats.set(themeName, {
+          id: themeName,
+          title: themeName,
+          description: `Revisões e questões de ${themeName}`,
+          questionsCount: 0,
+          correctAnswers: 0,
+          totalAnswers: 0
+        });
+      }
+
+      const stats = themeStats.get(themeName);
+      topic.revisions.forEach(rev => {
+        stats.questionsCount += rev.totalCount;
+        stats.correctAnswers += rev.correctCount;
+        stats.totalAnswers += rev.totalCount;
+      });
+      
+      stats.progress = stats.totalAnswers > 0 
+        ? Math.round((stats.correctAnswers / stats.totalAnswers) * 100)
+        : 0;
+    });
+
+    return Array.from(themeStats.values());
+  }, [studiedTopics]);
+
   useEffect(() => {
     console.log("Página de temas carregada");
   }, []);
+
+  const ThemeCard = ({
+    title,
+    description,
+    progress,
+    questionsCount,
+    correctAnswers,
+  }: {
+    title: string;
+    description: string;
+    progress: number;
+    questionsCount: number;
+    correctAnswers: number;
+  }) => {
+    const accuracy = Math.round((correctAnswers / questionsCount) * 100) || 0;
+    
+    return (
+      <div className="group relative rounded-lg border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <p className="mt-1 text-sm text-gray-600">{description}</p>
+          </div>
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>{questionsCount} questões</span>
+            <span>{accuracy}% de acerto</span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-900">Progresso</span>
+              <span className="text-sm font-medium text-primary">{progress}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
@@ -127,24 +218,24 @@ const Index = () => {
         <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Total de Questões"
-            value="1.248"
-            description="89 questões essa semana"
+            value={metrics.totalQuestions.toString()}
+            description={`${metrics.weeklyQuestions} questões essa semana`}
             icon={Brain}
-            trend={{ value: 12, isPositive: true }}
+            trend={metrics.weeklyQuestions > 0 ? { value: 12, isPositive: true } : undefined}
           />
           <StatCard
             title="Taxa de Acerto"
-            value="76%"
+            value={`${metrics.totalAccuracy}%`}
             description="Média dos últimos 30 dias"
             icon={Target}
-            trend={{ value: 4, isPositive: true }}
+            trend={metrics.totalAccuracy > 70 ? { value: 4, isPositive: true } : undefined}
           />
           <StatCard
             title="Taxa de Acerto Total"
-            value="72%"
+            value={`${metrics.totalAccuracy}%`}
             description="Todas as questões respondidas"
             icon={CheckCircle}
-            trend={{ value: 2, isPositive: true }}
+            trend={metrics.totalAccuracy > 70 ? { value: 2, isPositive: true } : undefined}
           />
         </div>
 
@@ -159,7 +250,7 @@ const Index = () => {
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={performanceData}>
+              <BarChart data={specialtyPerformance}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="subject" />
                 <YAxis />
@@ -178,7 +269,7 @@ const Index = () => {
                 Revisões Pendentes
               </h2>
               <div className="space-y-4">
-                {reviewAlerts.map((alert, index) => (
+                {upcomingReviews.map((alert, index) => (
                   <ReviewAlert key={index} {...alert} />
                 ))}
               </div>
