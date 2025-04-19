@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo } from "react";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
@@ -74,6 +75,7 @@ const Index = () => {
   }, [studiedTopics]);
 
   const specialtyPerformance = useMemo(() => {
+    // Initialize all specialties with zeros
     const specialties = new Map([
       ['Clínica Médica', { correct: 0, total: 0, média: 70 }],
       ['Cirurgia', { correct: 0, total: 0, média: 70 }],
@@ -82,24 +84,42 @@ const Index = () => {
       ['Medicina Preventiva', { correct: 0, total: 0, média: 70 }]
     ]);
 
+    // Process all studied topics to categorize them into specialties
     studiedTopics.forEach(topic => {
+      // Extract the specialty name from the topic title
       let specialty = topic.title.split(' - ')[0];
       
-      if (specialty.includes('Clinica')) specialty = 'Clínica Médica';
-      if (specialty.includes('Cirurg')) specialty = 'Cirurgia';
-      if (specialty.includes('Gineco')) specialty = 'Ginecologia e Obstetrícia';
-      if (specialty.includes('Pediatr')) specialty = 'Pediatria';
-      if (specialty.includes('Prevent')) specialty = 'Medicina Preventiva';
+      // Map various spellings/formats to standard specialty names
+      if (specialty.includes('Clinica') || specialty.includes('Clínica') || 
+          specialty.includes('Endocrin') || specialty.includes('Cardio')) {
+        specialty = 'Clínica Médica';
+      } else if (specialty.includes('Cirurg') || specialty.includes('Trauma') || 
+                specialty.includes('Vascular') || specialty.includes('Urolog')) {
+        specialty = 'Cirurgia';
+      } else if (specialty.includes('Gineco') || specialty.includes('Obstetr')) {
+        specialty = 'Ginecologia e Obstetrícia';
+      } else if (specialty.includes('Pediatr') || specialty.includes('Neonat')) {
+        specialty = 'Pediatria';
+      } else if (specialty.includes('Prevent') || specialty.includes('SUS') ||
+                specialty.includes('Saúde') || specialty.includes('Epidem')) {
+        specialty = 'Medicina Preventiva';
+      }
       
+      // Get the stats for this specialty
       const stats = specialties.get(specialty);
+      
+      // If we have stats for this specialty, add the revision data
       if (stats) {
         topic.revisions.forEach(rev => {
-          stats.correct += rev.correctCount;
-          stats.total += rev.totalCount;
+          if (rev && typeof rev.correctCount === 'number' && typeof rev.totalCount === 'number') {
+            stats.correct += rev.correctCount;
+            stats.total += rev.totalCount;
+          }
         });
       }
     });
 
+    // Convert the Map to an array of objects for the chart
     return Array.from(specialties.entries()).map(([subject, stats]) => ({
       subject,
       você: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
@@ -161,7 +181,8 @@ const Index = () => {
 
   useEffect(() => {
     console.log("Página de temas carregada");
-  }, []);
+    console.log("Specialty Performance Data:", specialtyPerformance);
+  }, [specialtyPerformance]);
 
   const ThemeCard = ({
     title,
