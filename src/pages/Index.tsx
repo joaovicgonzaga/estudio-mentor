@@ -93,56 +93,72 @@ const Index = () => {
   }, [studiedTopics]);
 
   const specialtyPerformance = useMemo(() => {
-    // Initialize all specialties with zeros
-    const specialties = new Map([
-      ['Clínica Médica', { correct: 0, total: 0, média: 70 }],
-      ['Cirurgia', { correct: 0, total: 0, média: 70 }],
-      ['Ginecologia e Obstetrícia', { correct: 0, total: 0, média: 70 }],
-      ['Pediatria', { correct: 0, total: 0, média: 70 }],
-      ['Medicina Preventiva', { correct: 0, total: 0, média: 70 }]
-    ]);
+    // Define specialties with default values
+    const specialties = {
+      'Clínica Médica': { correct: 0, total: 0, média: 70 },
+      'Cirurgia': { correct: 0, total: 0, média: 70 },
+      'Ginecologia e Obstetrícia': { correct: 0, total: 0, média: 70 },
+      'Pediatria': { correct: 0, total: 0, média: 70 },
+      'Medicina Preventiva': { correct: 0, total: 0, média: 70 }
+    };
 
-    // Process all studied topics to categorize them into specialties
+    // Helper function to determine which specialty a topic belongs to
+    const getSpecialty = (title: string): string => {
+      const lowerTitle = title.toLowerCase();
+      
+      if (lowerTitle.includes('cardio') || lowerTitle.includes('clínica') || 
+          lowerTitle.includes('clinica') || lowerTitle.includes('endocrin')) {
+        return 'Clínica Médica';
+      } 
+      else if (lowerTitle.includes('cirurg') || lowerTitle.includes('trauma') || 
+               lowerTitle.includes('vascular') || lowerTitle.includes('urolog')) {
+        return 'Cirurgia';
+      }
+      else if (lowerTitle.includes('gineco') || lowerTitle.includes('obstetr') ||
+               lowerTitle.includes('sua') || lowerTitle.includes('ciclo menstrual')) {
+        return 'Ginecologia e Obstetrícia';
+      }
+      else if (lowerTitle.includes('pediatr') || lowerTitle.includes('neonat') ||
+               lowerTitle.includes('aleitamento') || lowerTitle.includes('crescimento')) {
+        return 'Pediatria';
+      }
+      else if (lowerTitle.includes('prevent') || lowerTitle.includes('epidem') || 
+               lowerTitle.includes('saúde') || lowerTitle.includes('sus')) {
+        return 'Medicina Preventiva';
+      }
+      
+      console.log('Topic not categorized:', title);
+      return 'Outros';
+    };
+
+    // Process all topics to aggregate data by specialty
     studiedTopics.forEach(topic => {
-      // Extract the specialty name from the topic title
-      let specialty = topic.title.split(' - ')[0];
+      const specialtyName = getSpecialty(topic.title);
       
-      // Map various spellings/formats to standard specialty names
-      if (specialty.includes('Clinica') || specialty.includes('Clínica') || 
-          specialty.includes('Endocrin') || specialty.includes('Cardio')) {
-        specialty = 'Clínica Médica';
-      } else if (specialty.includes('Cirurg') || specialty.includes('Trauma') || 
-                specialty.includes('Vascular') || specialty.includes('Urolog')) {
-        specialty = 'Cirurgia';
-      } else if (specialty.includes('Gineco') || specialty.includes('Obstetr')) {
-        specialty = 'Ginecologia e Obstetrícia';
-      } else if (specialty.includes('Pediatr') || specialty.includes('Neonat')) {
-        specialty = 'Pediatria';
-      } else if (specialty.includes('Prevent') || specialty.includes('SUS') ||
-                specialty.includes('Saúde') || specialty.includes('Epidem')) {
-        specialty = 'Medicina Preventiva';
-      }
+      // Skip uncategorized topics
+      if (specialtyName === 'Outros') return;
       
-      // Get the stats for this specialty
-      const stats = specialties.get(specialty);
+      const specialty = specialties[specialtyName as keyof typeof specialties];
+      if (!specialty) return;
       
-      // If we have stats for this specialty, add the revision data
-      if (stats) {
-        topic.revisions.forEach(rev => {
-          if (rev && typeof rev.correctCount === 'number' && typeof rev.totalCount === 'number') {
-            stats.correct += rev.correctCount;
-            stats.total += rev.totalCount;
-          }
-        });
-      }
+      // Count all questions and correct answers from all revisions
+      topic.revisions.forEach(rev => {
+        if (typeof rev.correctCount === 'number' && typeof rev.totalCount === 'number') {
+          specialty.correct += rev.correctCount;
+          specialty.total += rev.totalCount;
+        }
+      });
     });
 
-    // Convert the Map to an array of objects for the chart
-    return Array.from(specialties.entries()).map(([subject, stats]) => ({
+    // Format data for the chart
+    const result = Object.entries(specialties).map(([subject, stats]) => ({
       subject,
       você: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
       média: stats.média
     }));
+    
+    console.log('Specialty Performance Calculation:', result);
+    return result;
   }, [studiedTopics]);
 
   const upcomingReviews = useMemo(() => {
