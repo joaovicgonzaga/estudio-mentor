@@ -74,24 +74,30 @@ const Index = () => {
   }, [studiedTopics]);
 
   const specialtyPerformance = useMemo(() => {
-    const specialties = new Map();
+    const specialties = new Map([
+      ['Clínica Médica', { correct: 0, total: 0, média: 70 }],
+      ['Cirurgia', { correct: 0, total: 0, média: 70 }],
+      ['Ginecologia e Obstetrícia', { correct: 0, total: 0, média: 70 }],
+      ['Pediatria', { correct: 0, total: 0, média: 70 }],
+      ['Medicina Preventiva', { correct: 0, total: 0, média: 70 }]
+    ]);
 
     studiedTopics.forEach(topic => {
-      const specialty = topic.title.split(' - ')[0];
+      let specialty = topic.title.split(' - ')[0];
       
-      if (!specialties.has(specialty)) {
-        specialties.set(specialty, {
-          correct: 0,
-          total: 0,
-          média: 70
+      if (specialty.includes('Clinica')) specialty = 'Clínica Médica';
+      if (specialty.includes('Cirurg')) specialty = 'Cirurgia';
+      if (specialty.includes('Gineco')) specialty = 'Ginecologia e Obstetrícia';
+      if (specialty.includes('Pediatr')) specialty = 'Pediatria';
+      if (specialty.includes('Prevent')) specialty = 'Medicina Preventiva';
+      
+      const stats = specialties.get(specialty);
+      if (stats) {
+        topic.revisions.forEach(rev => {
+          stats.correct += rev.correctCount;
+          stats.total += rev.totalCount;
         });
       }
-
-      const stats = specialties.get(specialty);
-      topic.revisions.forEach(rev => {
-        stats.correct += rev.correctCount;
-        stats.total += rev.totalCount;
-      });
     });
 
     return Array.from(specialties.entries()).map(([subject, stats]) => ({
@@ -242,7 +248,7 @@ const Index = () => {
         <div className="mb-8 rounded-lg border bg-white p-6">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              Desempenho por Disciplina
+              Desempenho por Área
             </h2>
             <p className="text-sm text-gray-600">
               Comparação com a média da turma
