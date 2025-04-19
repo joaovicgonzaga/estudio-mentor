@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
 import {
@@ -14,33 +14,51 @@ import {
 import { Brain, Target, CheckCircle } from "lucide-react";
 import { StudiedTopic } from "@/types/study";
 
-const useStudiedTopics = () => {
-  const getStudiedTopics = (): StudiedTopic[] => {
-    const saved = localStorage.getItem("studied-topics");
-    if (!saved) return [];
-    
-    try {
-      const parsed = JSON.parse(saved);
-      return parsed.map((topic: any) => ({
-        ...topic,
-        studiedAt: new Date(topic.studiedAt),
-        nextRevision: new Date(topic.nextRevision),
-        revisions: (topic.revisions || []).map((rev: any) => ({
-          ...rev,
-          date: new Date(rev.date)
-        }))
-      }));
-    } catch (e) {
-      console.error("Error parsing studied topics:", e);
-      return [];
-    }
-  };
-
-  return getStudiedTopics();
-};
-
 const Index = () => {
-  const studiedTopics = useStudiedTopics();
+  // Use useState instead of a custom hook to ensure we're always getting fresh data
+  const [studiedTopics, setStudiedTopics] = useState<StudiedTopic[]>([]);
+  
+  // Load data from localStorage when the component mounts or when the user navigates back to the dashboard
+  useEffect(() => {
+    const getStudiedTopics = () => {
+      const saved = localStorage.getItem("studied-topics");
+      if (!saved) return [];
+      
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((topic: any) => ({
+          ...topic,
+          studiedAt: new Date(topic.studiedAt),
+          nextRevision: new Date(topic.nextRevision),
+          revisions: (topic.revisions || []).map((rev: any) => ({
+            ...rev,
+            date: new Date(rev.date)
+          }))
+        }));
+      } catch (e) {
+        console.error("Error parsing studied topics:", e);
+        return [];
+      }
+    };
+    
+    // Get fresh data from localStorage
+    setStudiedTopics(getStudiedTopics());
+    
+    // This will ensure we refresh the data if the user navigates away and back to this page
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setStudiedTopics(getStudiedTopics());
+      }
+    };
+    
+    // Listen for visibility changes (e.g., when user returns to tab)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Cleanup listener on unmount
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
   
   const metrics = useMemo(() => {
     const totalQuestions = studiedTopics.reduce((sum, topic) => {
