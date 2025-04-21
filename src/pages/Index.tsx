@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
@@ -16,6 +15,7 @@ import {
 } from "recharts";
 import { Brain, Target, CheckCircle } from "lucide-react";
 import { StudiedTopic } from "@/types/study";
+import { Card } from "@/components/ui/card";
 
 const Index = () => {
   const [studiedTopics, setStudiedTopics] = useState<StudiedTopic[]>([]);
@@ -301,8 +301,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8 pb-24">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 space-y-2">
+      <div className="mx-auto max-w-7xl space-y-12">
+        <div className="space-y-2">
           <span className="text-sm font-medium text-primary">
             Sistema de Estudos
           </span>
@@ -314,7 +314,7 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Total de Questões"
             value={metrics.totalQuestions.toString()}
@@ -338,7 +338,7 @@ const Index = () => {
           />
         </div>
 
-        <div className="mb-12 rounded-lg border bg-white p-6">
+        <Card className="p-6">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
               Desempenho por Área
@@ -361,44 +361,47 @@ const Index = () => {
               </BarChart>
             </ChartContainer>
           </div>
-        </div>
+        </Card>
 
-        <div className="mb-12 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <div className="rounded-lg border bg-white p-6 h-full">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                Revisões Pendentes
-              </h2>
-              <div className="space-y-4">
-                {upcomingReviews.map((alert, index) => (
+        <div className="grid gap-8 lg:grid-cols-3">
+          <Card className="p-6 lg:col-span-1">
+            <h2 className="mb-6 text-lg font-semibold text-gray-900">
+              Revisões Pendentes
+            </h2>
+            <div className="space-y-4">
+              {upcomingReviews.length > 0 ? (
+                upcomingReviews.map((alert, index) => (
                   <ReviewAlert key={index} {...alert} />
-                ))}
-              </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">Nenhuma revisão para os próximos 7 dias</p>
+              )}
             </div>
-          </div>
+          </Card>
 
-          <div className="lg:col-span-2">
-            <div className="rounded-lg border bg-white p-6 h-full">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                Temas em Progresso
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {themes.slice(0, 2).map((theme) => (
-                  <ThemeCard
-                    key={theme.id}
-                    title={theme.title}
-                    description={theme.description}
-                    progress={theme.progress}
-                    questionsCount={theme.questionsCount}
-                    correctAnswers={theme.correctAnswers}
-                  />
-                ))}
-              </div>
+          <Card className="p-6 lg:col-span-2">
+            <h2 className="mb-6 text-lg font-semibold text-gray-900">
+              Temas em Progresso
+            </h2>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {themes.slice(0, 2).map((theme) => (
+                <ThemeCard
+                  key={theme.id}
+                  title={theme.title}
+                  description={theme.description}
+                  progress={theme.progress}
+                  questionsCount={theme.questionsCount}
+                  correctAnswers={theme.correctAnswers}
+                />
+              ))}
+              {themes.length === 0 && (
+                <p className="text-sm text-gray-500 sm:col-span-2">Nenhum tema em progresso ainda</p>
+              )}
             </div>
-          </div>
+          </Card>
         </div>
 
-        <div className="mt-12">
+        <div>
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
               Todos os Temas
@@ -419,6 +422,9 @@ const Index = () => {
                 correctAnswers={theme.correctAnswers}
               />
             ))}
+            {themes.length === 0 && (
+              <p className="text-sm text-gray-500 col-span-full">Nenhum tema disponível</p>
+            )}
           </div>
         </div>
       </div>
@@ -427,4 +433,3 @@ const Index = () => {
 };
 
 export default Index;
-
