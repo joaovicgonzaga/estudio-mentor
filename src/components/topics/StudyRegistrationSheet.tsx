@@ -32,7 +32,7 @@ export const StudyRegistrationSheet = ({
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent side="right">
         <SheetHeader>
           <SheetTitle>Registrar estudo de tema</SheetTitle>
           <SheetDescription>
