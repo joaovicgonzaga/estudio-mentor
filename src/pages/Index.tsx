@@ -3,13 +3,16 @@ import { useEffect, useMemo, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
 import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
 } from "recharts";
 import { Brain, Target, CheckCircle } from "lucide-react";
 import { StudiedTopic } from "@/types/study";
@@ -51,12 +54,19 @@ const Index = () => {
       }
     };
     
+    // For refreshing when user returns to the dashboard from another route
+    const handleRouteChange = () => {
+      setStudiedTopics(getStudiedTopics());
+    };
+    
     // Listen for visibility changes (e.g., when user returns to tab)
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('popstate', handleRouteChange);
     
     // Cleanup listener on unmount
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
   
@@ -107,23 +117,41 @@ const Index = () => {
       const lowerTitle = title.toLowerCase();
       
       if (lowerTitle.includes('cardio') || lowerTitle.includes('clínica') || 
-          lowerTitle.includes('clinica') || lowerTitle.includes('endocrin')) {
+          lowerTitle.includes('clinica') || lowerTitle.includes('endocrin') ||
+          lowerTitle.includes('nefrolog') || lowerTitle.includes('gastro') ||
+          lowerTitle.includes('pneumo') || lowerTitle.includes('hemato') ||
+          lowerTitle.includes('neurolog') || lowerTitle.includes('reumatolog') ||
+          lowerTitle.includes('infecto') || lowerTitle.includes('imunolog') ||
+          lowerTitle.includes('dermatolog') || lowerTitle.includes('psiquiatr')) {
         return 'Clínica Médica';
       } 
       else if (lowerTitle.includes('cirurg') || lowerTitle.includes('trauma') || 
-               lowerTitle.includes('vascular') || lowerTitle.includes('urolog')) {
+               lowerTitle.includes('vascular') || lowerTitle.includes('urolog') ||
+               lowerTitle.includes('otorrino') || lowerTitle.includes('oftalmolog') ||
+               lowerTitle.includes('ortoped') || lowerTitle.includes('transplant') ||
+               lowerTitle.includes('anestes')) {
         return 'Cirurgia';
       }
       else if (lowerTitle.includes('gineco') || lowerTitle.includes('obstetr') ||
-               lowerTitle.includes('sua') || lowerTitle.includes('ciclo menstrual')) {
+               lowerTitle.includes('sua') || lowerTitle.includes('ciclo menstrual') ||
+               lowerTitle.includes('parto') || lowerTitle.includes('gravidez') ||
+               lowerTitle.includes('pré-natal') || lowerTitle.includes('pre-natal') ||
+               lowerTitle.includes('amament') || lowerTitle.includes('menstruaç')) {
         return 'Ginecologia e Obstetrícia';
       }
       else if (lowerTitle.includes('pediatr') || lowerTitle.includes('neonat') ||
-               lowerTitle.includes('aleitamento') || lowerTitle.includes('crescimento')) {
+               lowerTitle.includes('aleitamento') || lowerTitle.includes('crescimento') ||
+               lowerTitle.includes('infantil') || lowerTitle.includes('criança') ||
+               lowerTitle.includes('adolescente') || lowerTitle.includes('púbere') ||
+               lowerTitle.includes('puberdade')) {
         return 'Pediatria';
       }
       else if (lowerTitle.includes('prevent') || lowerTitle.includes('epidem') || 
-               lowerTitle.includes('saúde') || lowerTitle.includes('sus')) {
+               lowerTitle.includes('saúde') || lowerTitle.includes('sus') ||
+               lowerTitle.includes('coletiv') || lowerTitle.includes('pública') ||
+               lowerTitle.includes('publica') || lowerTitle.includes('saneament') ||
+               lowerTitle.includes('vigilância') || lowerTitle.includes('promocao') ||
+               lowerTitle.includes('promoção')) {
         return 'Medicina Preventiva';
       }
       
@@ -131,23 +159,40 @@ const Index = () => {
       return 'Outros';
     };
 
-    // Process all topics to aggregate data by specialty
+    // First, group all revisions by specialty
+    const aggregatedData: Record<string, { correctCount: number, totalCount: number }> = {};
+    
     studiedTopics.forEach(topic => {
       const specialtyName = getSpecialty(topic.title);
       
       // Skip uncategorized topics
       if (specialtyName === 'Outros') return;
       
-      const specialty = specialties[specialtyName as keyof typeof specialties];
-      if (!specialty) return;
+      if (!aggregatedData[specialtyName]) {
+        aggregatedData[specialtyName] = {
+          correctCount: 0,
+          totalCount: 0
+        };
+      }
       
       // Count all questions and correct answers from all revisions
       topic.revisions.forEach(rev => {
         if (typeof rev.correctCount === 'number' && typeof rev.totalCount === 'number') {
-          specialty.correct += rev.correctCount;
-          specialty.total += rev.totalCount;
+          aggregatedData[specialtyName].correctCount += rev.correctCount;
+          aggregatedData[specialtyName].totalCount += rev.totalCount;
         }
       });
+    });
+    
+    console.log('Aggregated data by specialty:', aggregatedData);
+    
+    // Now set the correct values to specialties
+    Object.entries(aggregatedData).forEach(([specialtyName, data]) => {
+      if (specialtyName in specialties) {
+        const specialty = specialties[specialtyName as keyof typeof specialties];
+        specialty.correct = data.correctCount;
+        specialty.total = data.totalCount;
+      }
     });
 
     // Format data for the chart
@@ -157,7 +202,7 @@ const Index = () => {
       média: stats.média
     }));
     
-    console.log('Specialty Performance Calculation:', result);
+    console.log('Specialty Performance Data Results:', result);
     return result;
   }, [studiedTopics]);
 
@@ -261,6 +306,22 @@ const Index = () => {
     );
   };
 
+  // Chart configuration for the specialty performance chart
+  const chartConfig = {
+    você: {
+      theme: {
+        light: "#3b82f6",
+        dark: "#60a5fa",
+      },
+    },
+    média: {
+      theme: {
+        light: "#94a3b8",
+        dark: "#64748b",
+      },
+    },
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
       <div className="mx-auto max-w-7xl">
@@ -310,16 +371,18 @@ const Index = () => {
             </p>
           </div>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ChartContainer config={chartConfig}>
               <BarChart data={specialtyPerformance}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="subject" />
                 <YAxis />
-                <Tooltip />
-                <Bar dataKey="você" fill="#94A3B8" />
-                <Bar dataKey="média" fill="#E2E8F0" />
+                <ChartTooltip
+                  content={<ChartTooltipContent />}
+                />
+                <Bar dataKey="você" fill="#3b82f6" name="Você" />
+                <Bar dataKey="média" fill="#94a3b8" name="Média" />
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </div>
         </div>
 
