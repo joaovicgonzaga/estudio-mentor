@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
@@ -18,10 +17,8 @@ import { Brain, Target, CheckCircle } from "lucide-react";
 import { StudiedTopic } from "@/types/study";
 
 const Index = () => {
-  // Use useState instead of a custom hook to ensure we're always getting fresh data
   const [studiedTopics, setStudiedTopics] = useState<StudiedTopic[]>([]);
   
-  // Load data from localStorage when the component mounts or when the user navigates back to the dashboard
   useEffect(() => {
     const getStudiedTopics = () => {
       const saved = localStorage.getItem("studied-topics");
@@ -44,26 +41,21 @@ const Index = () => {
       }
     };
     
-    // Get fresh data from localStorage
     setStudiedTopics(getStudiedTopics());
     
-    // This will ensure we refresh the data if the user navigates away and back to this page
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         setStudiedTopics(getStudiedTopics());
       }
     };
     
-    // For refreshing when user returns to the dashboard from another route
     const handleRouteChange = () => {
       setStudiedTopics(getStudiedTopics());
     };
     
-    // Listen for visibility changes (e.g., when user returns to tab)
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('popstate', handleRouteChange);
     
-    // Cleanup listener on unmount
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('popstate', handleRouteChange);
@@ -103,7 +95,6 @@ const Index = () => {
   }, [studiedTopics]);
 
   const specialtyPerformance = useMemo(() => {
-    // Define specialties with default values
     const specialties = {
       'Clínica Médica': { correct: 0, total: 0, média: 70 },
       'Cirurgia': { correct: 0, total: 0, média: 70 },
@@ -112,7 +103,6 @@ const Index = () => {
       'Medicina Preventiva': { correct: 0, total: 0, média: 70 }
     };
 
-    // Helper function to determine which specialty a topic belongs to
     const getSpecialty = (title: string): string => {
       const lowerTitle = title.toLowerCase();
       
@@ -159,14 +149,10 @@ const Index = () => {
       return 'Outros';
     };
 
-    // First, group all revisions by specialty
     const aggregatedData: Record<string, { correctCount: number, totalCount: number }> = {};
     
     studiedTopics.forEach(topic => {
       const specialtyName = getSpecialty(topic.title);
-      
-      // Skip uncategorized topics
-      if (specialtyName === 'Outros') return;
       
       if (!aggregatedData[specialtyName]) {
         aggregatedData[specialtyName] = {
@@ -175,7 +161,6 @@ const Index = () => {
         };
       }
       
-      // Count all questions and correct answers from all revisions
       topic.revisions.forEach(rev => {
         if (typeof rev.correctCount === 'number' && typeof rev.totalCount === 'number') {
           aggregatedData[specialtyName].correctCount += rev.correctCount;
@@ -184,25 +169,12 @@ const Index = () => {
       });
     });
     
-    console.log('Aggregated data by specialty:', aggregatedData);
-    
-    // Now set the correct values to specialties
-    Object.entries(aggregatedData).forEach(([specialtyName, data]) => {
-      if (specialtyName in specialties) {
-        const specialty = specialties[specialtyName as keyof typeof specialties];
-        specialty.correct = data.correctCount;
-        specialty.total = data.totalCount;
-      }
-    });
-
-    // Format data for the chart
-    const result = Object.entries(specialties).map(([subject, stats]) => ({
-      subject,
-      você: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-      média: stats.média
+    const result = Object.entries(aggregatedData).map(([specialtyName, data]) => ({
+      subject: specialtyName,
+      você: data.totalCount > 0 ? Math.round((data.correctCount / data.totalCount) * 100) : 0,
+      média: specialties[specialtyName as keyof typeof specialties].média
     }));
     
-    console.log('Specialty Performance Data Results:', result);
     return result;
   }, [studiedTopics]);
 
@@ -306,7 +278,6 @@ const Index = () => {
     );
   };
 
-  // Chart configuration for the specialty performance chart
   const chartConfig = {
     você: {
       theme: {
@@ -323,7 +294,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-8">
+    <div className="min-h-screen bg-gray-50 px-6 py-8 pb-24">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 space-y-2">
           <span className="text-sm font-medium text-primary">
@@ -386,7 +357,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="mb-8 grid gap-6 lg:grid-cols-3">
+        <div className="mb-12 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <div className="rounded-lg border bg-white p-6">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">
@@ -421,7 +392,7 @@ const Index = () => {
           </div>
         </div>
 
-        <div>
+        <div className="mt-12">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
               Todos os Temas
