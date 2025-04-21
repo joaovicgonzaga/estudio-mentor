@@ -1,21 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { StatCard } from "@/components/StatCard";
-import { ReviewAlert } from "@/components/ReviewAlert";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
-import { Brain, Target, CheckCircle } from "lucide-react";
 import { StudiedTopic } from "@/types/study";
-import { Card } from "@/components/ui/card";
+import { DashboardStats } from "@/components/dashboard/DashboardStats";
+import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
+import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
+import { AllThemes } from "@/components/dashboard/AllThemes";
+import { ThemeCard } from "@/components/dashboard/ThemeCard";
 
 const Index = () => {
   const [studiedTopics, setStudiedTopics] = useState<StudiedTopic[]>([]);
@@ -236,54 +225,6 @@ const Index = () => {
     return Array.from(themeStats.values());
   }, [studiedTopics]);
 
-  useEffect(() => {
-    console.log("Página de temas carregada");
-    console.log("Specialty Performance Data:", specialtyPerformance);
-  }, [specialtyPerformance]);
-
-  const ThemeCard = ({
-    title,
-    description,
-    progress,
-    questionsCount,
-    correctAnswers,
-  }: {
-    title: string;
-    description: string;
-    progress: number;
-    questionsCount: number;
-    correctAnswers: number;
-  }) => {
-    const accuracy = Math.round((correctAnswers / questionsCount) * 100) || 0;
-    
-    return (
-      <div className="group relative rounded-lg border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <p className="mt-1 text-sm text-gray-600">{description}</p>
-          </div>
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <span>{questionsCount} questões</span>
-            <span>{accuracy}% de acerto</span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">Progresso</span>
-              <span className="text-sm font-medium text-primary">{progress}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-gray-200">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const chartConfig = {
     você: {
       theme: {
@@ -314,117 +255,55 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard
-            title="Total de Questões"
-            value={metrics.totalQuestions.toString()}
-            description={`${metrics.weeklyQuestions} questões essa semana`}
-            icon={Brain}
-            trend={metrics.weeklyQuestions > 0 ? { value: 12, isPositive: true } : undefined}
-          />
-          <StatCard
-            title="Taxa de Acerto"
-            value={`${metrics.totalAccuracy}%`}
-            description="Média dos últimos 30 dias"
-            icon={Target}
-            trend={metrics.totalAccuracy > 70 ? { value: 4, isPositive: true } : undefined}
-          />
-          <StatCard
-            title="Taxa de Acerto Total"
-            value={`${metrics.totalAccuracy}%`}
-            description="Todas as questões respondidas"
-            icon={CheckCircle}
-            trend={metrics.totalAccuracy > 70 ? { value: 2, isPositive: true } : undefined}
-          />
-        </div>
+        <DashboardStats metrics={metrics} />
+        <PerformanceChart data={specialtyPerformance} chartConfig={chartConfig} />
+        <DashboardOverview
+          upcomingReviews={upcomingReviews}
+          themes={themes}
+          ThemeCard={ThemeCard}
+        />
+        <AllThemes themes={themes} ThemeCard={ThemeCard} />
+      </div>
+    </div>
+  );
+};
 
-        <Card className="p-6">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Desempenho por Área
-            </h2>
-            <p className="text-sm text-gray-600">
-              Comparação com a média da turma
-            </p>
-          </div>
-          <div className="h-[300px] w-full">
-            <ChartContainer config={chartConfig}>
-              <BarChart data={specialtyPerformance}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="subject" />
-                <YAxis />
-                <ChartTooltip
-                  content={<ChartTooltipContent />}
-                />
-                <Bar dataKey="você" fill="#3b82f6" name="Você" />
-                <Bar dataKey="média" fill="#94a3b8" name="Média" />
-              </BarChart>
-            </ChartContainer>
-          </div>
-        </Card>
-
-        <div className="grid gap-8 lg:grid-cols-3">
-          <Card className="p-6 lg:col-span-1">
-            <h2 className="mb-6 text-lg font-semibold text-gray-900">
-              Revisões Pendentes
-            </h2>
-            <div className="space-y-4">
-              {upcomingReviews.length > 0 ? (
-                upcomingReviews.map((alert, index) => (
-                  <ReviewAlert key={index} {...alert} />
-                ))
-              ) : (
-                <p className="text-sm text-gray-500">Nenhuma revisão para os próximos 7 dias</p>
-              )}
-            </div>
-          </Card>
-
-          <Card className="p-6 lg:col-span-2">
-            <h2 className="mb-6 text-lg font-semibold text-gray-900">
-              Temas em Progresso
-            </h2>
-            <div className="grid gap-6 sm:grid-cols-2">
-              {themes.slice(0, 2).map((theme) => (
-                <ThemeCard
-                  key={theme.id}
-                  title={theme.title}
-                  description={theme.description}
-                  progress={theme.progress}
-                  questionsCount={theme.questionsCount}
-                  correctAnswers={theme.correctAnswers}
-                />
-              ))}
-              {themes.length === 0 && (
-                <p className="text-sm text-gray-500 sm:col-span-2">Nenhum tema em progresso ainda</p>
-              )}
-            </div>
-          </Card>
-        </div>
-
+const ThemeCard = ({
+  title,
+  description,
+  progress,
+  questionsCount,
+  correctAnswers,
+}: {
+  title: string;
+  description?: string;
+  progress: number;
+  questionsCount: number;
+  correctAnswers: number;
+}) => {
+  const accuracy = Math.round((correctAnswers / questionsCount) * 100) || 0;
+  
+  return (
+    <div className="group relative rounded-lg border bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md">
+      <div className="space-y-4">
         <div>
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Todos os Temas
-            </h2>
-            <p className="text-sm text-gray-600">
-              Continue de onde parou ou explore novos temas
-            </p>
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <p className="mt-1 text-sm text-gray-600">{description}</p>
+        </div>
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <span>{questionsCount} questões</span>
+          <span>{accuracy}% de acerto</span>
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-900">Progresso</span>
+            <span className="text-sm font-medium text-primary">{progress}%</span>
           </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {themes.map((theme) => (
-              <ThemeCard
-                key={theme.id}
-                title={theme.title}
-                description={theme.description}
-                progress={theme.progress}
-                questionsCount={theme.questionsCount}
-                correctAnswers={theme.correctAnswers}
-              />
-            ))}
-            {themes.length === 0 && (
-              <p className="text-sm text-gray-500 col-span-full">Nenhum tema disponível</p>
-            )}
+          <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
       </div>
