@@ -169,11 +169,16 @@ const Index = () => {
       });
     });
     
-    const result = Object.entries(aggregatedData).map(([specialtyName, data]) => ({
-      subject: specialtyName,
-      você: data.totalCount > 0 ? Math.round((data.correctCount / data.totalCount) * 100) : 0,
-      média: specialties[specialtyName as keyof typeof specialties].média
-    }));
+    const result = Object.entries(aggregatedData).map(([specialtyName, data]) => {
+      const defaultMedia = 70;
+      const media = specialties[specialtyName as keyof typeof specialties]?.média || defaultMedia;
+      
+      return {
+        subject: specialtyName,
+        você: data.totalCount > 0 ? Math.round((data.correctCount / data.totalCount) * 100) : 0,
+        média: media
+      };
+    });
     
     return result;
   }, [studiedTopics]);
