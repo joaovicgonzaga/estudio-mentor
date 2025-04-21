@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { ReviewAlert } from "@/components/ReviewAlert";
@@ -337,7 +338,7 @@ const Index = () => {
           />
         </div>
 
-        <div className="mb-8 rounded-lg border bg-white p-6">
+        <div className="mb-12 rounded-lg border bg-white p-6">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
               Desempenho por Área
@@ -364,7 +365,7 @@ const Index = () => {
 
         <div className="mb-12 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
-            <div className="rounded-lg border bg-white p-6">
+            <div className="rounded-lg border bg-white p-6 h-full">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">
                 Revisões Pendentes
               </h2>
@@ -377,7 +378,7 @@ const Index = () => {
           </div>
 
           <div className="lg:col-span-2">
-            <div className="rounded-lg border bg-white p-6">
+            <div className="rounded-lg border bg-white p-6 h-full">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">
                 Temas em Progresso
               </h2>
@@ -426,3 +427,4 @@ const Index = () => {
 };
 
 export default Index;
+
