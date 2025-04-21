@@ -16,15 +16,15 @@ import {
 type SidebarState = {
   open: boolean
   mobile: boolean
+}
+
+type SidebarContextValue = {
+  sidebar: SidebarState
+  setSidebar: React.Dispatch<React.SetStateAction<SidebarState>>
   setOpen: (open: boolean) => void
 }
 
-type SidebarStore = {
-  sidebar: SidebarState
-  setSidebar: (sidebar: Partial<SidebarState>) => void
-}
-
-const SidebarContext = React.createContext<SidebarStore | null>(null)
+const SidebarContext = React.createContext<SidebarContextValue | null>(null)
 
 export const SidebarProvider = ({
   children,
@@ -34,11 +34,20 @@ export const SidebarProvider = ({
   const [sidebar, setSidebar] = React.useState<SidebarState>({
     open: true,
     mobile: false,
-    setOpen: (open) => setSidebar({ open }),
   })
 
+  const setOpen = React.useCallback((open: boolean) => {
+    setSidebar(state => ({ ...state, open }))
+  }, [])
+
+  const contextValue = React.useMemo(() => ({
+    sidebar,
+    setSidebar,
+    setOpen
+  }), [sidebar, setSidebar, setOpen])
+
   return (
-    <SidebarContext.Provider value={{ sidebar, setSidebar }}>
+    <SidebarContext.Provider value={contextValue}>
       {children}
     </SidebarContext.Provider>
   )
@@ -58,16 +67,19 @@ export const Sidebar = React.forwardRef<
   HTMLElement,
   React.HTMLAttributes<HTMLElement>
 >(({ className, children, ...props }, ref) => {
-  const { sidebar, setSidebar } = useSidebar()
+  const { sidebar, setOpen } = useSidebar()
   const [client, setClient] = React.useState(false)
-  const [open, setOpen] = React.useState(sidebar.open)
+  const [open, setLocalOpen] = React.useState(sidebar.open)
 
   React.useEffect(() => setClient(true), [])
-  React.useEffect(() => setOpen(sidebar.open), [sidebar.open])
+  React.useEffect(() => setLocalOpen(sidebar.open), [sidebar.open])
 
   function handleWindowResize() {
-    setSidebar({ mobile: window.matchMedia("(max-width: 640px)").matches })
+    const isMobile = window.matchMedia("(max-width: 640px)").matches
+    setSidebar(state => ({ ...state, mobile: isMobile }))
   }
+
+  const { setSidebar } = useSidebar()
 
   React.useEffect(() => {
     window.addEventListener("resize", handleWindowResize)
@@ -81,7 +93,7 @@ export const Sidebar = React.forwardRef<
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      setOpen(sidebar.open)
+      setLocalOpen(sidebar.open)
     }, 200)
 
     return () => clearTimeout(timer)
@@ -113,7 +125,7 @@ export const Sidebar = React.forwardRef<
 
   if (sidebar.mobile) {
     return (
-      <Sheet open={sidebar.open} onOpenChange={sidebar.setOpen}>
+      <Sheet open={sidebar.open} onOpenChange={setOpen}>
         <SheetContent
           side="left"
           className={cn(
@@ -129,7 +141,7 @@ export const Sidebar = React.forwardRef<
             <div className="flex h-16 items-center bg-white px-6">
               <X
                 className="h-6 w-6 cursor-pointer"
-                onClick={() => sidebar.setOpen(false)}
+                onClick={() => setOpen(false)}
               />
             </div>
             {children}
@@ -314,7 +326,7 @@ export const SidebarTrigger = ({
   children?: React.ReactNode
   className?: string
 }) => {
-  const { sidebar } = useSidebar()
+  const { sidebar, setOpen } = useSidebar()
 
   if (sidebar.open || sidebar.mobile) {
     return null
@@ -323,7 +335,7 @@ export const SidebarTrigger = ({
   return (
     <button
       className={cn("flex items-center justify-center", className)}
-      onClick={() => sidebar.setOpen(!sidebar.open)}
+      onClick={() => setOpen(!sidebar.open)}
     >
       {children ?? <Menu className="h-6 w-6" />}
     </button>
